@@ -1,17 +1,22 @@
 # Builder stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --production=false
+RUN npm ci --omit=dev
 
 COPY . .
 RUN npm run build
 
 # Runtime stage
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PORT=3000
+
+# Use a non-root user for security
+RUN addgroup -g 1001 -S nextjs && adduser -S nextjs -u 1001
+USER nextjs
 
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
@@ -23,9 +28,13 @@ COPY --from=builder /app/postcss.config.js ./
 COPY --from=builder /app/pages ./pages
 COPY --from=builder /app/styles ./styles
 COPY --from=builder /app/data/migrations ./data/migrations
-RUN npm install --omit=dev && npm cache clean --force
+
+RUN npm ci --omit=dev && npm cache clean --force
 
 VOLUME ["/app/data"]
-EXPOSE 80
+EXPOSE 3000
 
-CMD ["sh", "-c", "npm run start -- --port 80"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --spider -q http://localhost:3000 || exit 1
+
+CMD ["npm", "start"]
