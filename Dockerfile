@@ -14,10 +14,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Use a non-root user for security
-RUN addgroup -g 1001 -S nextjs && adduser -S nextjs -u 1001
-USER nextjs
-
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/.next ./.next
@@ -30,6 +26,10 @@ COPY --from=builder /app/styles ./styles
 COPY --from=builder /app/data/migrations ./data/migrations
 
 RUN npm ci --omit=dev && npm cache clean --force
+
+# Use a non-root user for security
+RUN addgroup -g 1001 -S nextjs && adduser -S nextjs -u 1001
+USER nextjs
 
 VOLUME ["/app/data"]
 EXPOSE 3000
