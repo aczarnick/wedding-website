@@ -1,4 +1,4 @@
-export default function Footer({ email, siteTitle }) {
+export default function Footer({ email, siteTitle }: { email: string; siteTitle: string; }) {
   return (
     <footer id="contact" className="bg-[#f8f5f2] text-[#3a2c1a] border-t border-[#e5ded6]">
       <div className="mx-auto max-w-4xl px-6 py-12 flex flex-col items-center gap-6">
@@ -6,7 +6,7 @@ export default function Footer({ email, siteTitle }) {
           <p className="font-serif text-2xl font-semibold tracking-wide text-[#3a2c1a]">{siteTitle}</p>
           <div className="w-12 h-1 bg-gradient-to-r from-[#e7cfa4] to-[#f8f5f2] rounded-full my-3" />
           <p className="mt-1 text-base text-[#7d6a4d] italic text-center max-w-xs">
-            Questions? You've got our numbers, just ask!
+            Questions? You&apos;ve got our numbers, just ask!
           </p>
         </div>
         <div className="flex flex-col items-center gap-1 text-sm">

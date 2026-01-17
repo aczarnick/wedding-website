@@ -2,29 +2,26 @@
   "name": "czarnickwedding",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "export": "next export",
-    "lint": "next lint",
-    "migrate": "node -e \"const fs=require('fs');const path=require('path');fs.mkdirSync(path.join(process.cwd(),'data'),{recursive:true});const Database=require('better-sqlite3');const db=new Database(path.join(process.cwd(),'data','rsvps.db'));const sql=fs.readFileSync(path.join(process.cwd(),'data','migrations','001_create_rsvps_table.sql'),'utf8');db.exec(sql);db.close();console.log('Migrations applied.');\""
+    "lint": "eslint"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
-    "autoprefixer": "^10.4.23",
-    "better-sqlite3": "12.4.1",
-    "next": "^16.1.1",
-    "postcss": "^8.5.6",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "tailwindcss": "^4.1.18"
+    "next": "16.1.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
-    "baseline-browser-mapping": "^2.9.14",
-    "eslint": "9.39.0",
-    "eslint-config-next": "16.0.1"
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   },
   "engines": {
     "node": ">=20"

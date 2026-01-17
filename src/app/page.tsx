@@ -1,23 +1,20 @@
-import { useCallback, useState } from 'react';
-import Head from 'next/head';
-import Hero from '../components/Hero';
-import EventDetails from '../components/EventDetails';
-import Accommodations from '../components/Accommodations';
-import RSVPForm from '../components/RSVPForm';
-import Registry from '../components/Registry';
-import Gallery from '../components/Gallery';
-import Footer from '../components/Footer';
+'use client'
+
+import { useCallback, useState } from "react";
+import Hero from "./components/Hero";
+import EventDetails from "./components/EventDetails";
+import Accommodations from "./components/Accommodations";
+import Footer from "./components/Footer";
 
 const NAV_ITEMS = [
   { label: 'Details', href: '#details' },
   { label: 'Accommodations', href: '#accommodations' },
-  // { label: 'RSVP', href: '#rsvp' },
-  // { label: 'Registry', href: '#registry' },
-  // { label: 'Gallery', href: '#gallery' },
   { label: 'Contact', href: '#contact' }
 ];
 
-export default function Home({ content }) {
+export default function Home(){
+  const content = getProps();
+
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const handleCtaClick = useCallback(() => {
@@ -29,20 +26,6 @@ export default function Home({ content }) {
 
   return (
     <>
-      <Head>
-        <title>Alex &amp; Claire&apos;s Wedding — October 10, 2026</title>
-        <meta
-          name="description"
-          content="Alex & Claire are getting married — October 10, 2026 — Kansas City, Missouri"
-        />
-        <meta property="og:title" content="Alex & Claire&apos;s Wedding" />
-        <meta property="og:description" content={content.global.siteDescription} />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://czarnickwedding.com" />
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      </Head>
-
       <div className="relative bg-background min-h-screen">
         <nav className="fixed inset-x-0 top-0 z-30 bg-white/90 shadow-md border-b border-[#e5ded6] backdrop-blur-lg" aria-label="Primary">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4 sm:px-10">
@@ -51,7 +34,7 @@ export default function Home({ content }) {
             </a>
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-full border border-[#e7cfa4] px-3 py-2 text-sm text-[#3a2c1a] bg-white shadow-sm sm:hidden"
+              className="inline-flex items-center justify-center rounded-full border border-[#e7cfa4] px-3 py-2 text-sm text-[#3a2c1a] bg-white shadow-xs sm:hidden"
               onClick={toggleMobileNav}
               aria-expanded={mobileNavOpen}
               aria-controls="primary-navigation"
@@ -64,7 +47,7 @@ export default function Home({ content }) {
                 <a
                   key={item.href}
                   href={item.href}
-                  className="font-body text-base text-[#7d6a4d] hover:text-[#bfa76a] transition-colors duration-200 px-2 py-1 rounded"
+                  className="font-body text-base text-[#7d6a4d] hover:text-[#bfa76a] transition-colors duration-200 px-2 py-1 rounded-sm"
                 >
                   {item.label}
                 </a>
@@ -78,7 +61,7 @@ export default function Home({ content }) {
                   <a
                     key={item.href}
                     href={item.href}
-                    className="font-body text-base text-[#7d6a4d] hover:text-[#bfa76a] transition-colors duration-200 px-2 py-1 rounded"
+                    className="font-body text-base text-[#7d6a4d] hover:text-[#bfa76a] transition-colors duration-200 px-2 py-1 rounded-sm"
                     onClick={() => setMobileNavOpen(false)}
                   >
                     {item.label}
@@ -114,12 +97,6 @@ export default function Home({ content }) {
             hotels={content.sections.accommodations.hotels}
             notes={content.sections.accommodations.notes}
           />
-          {/* <RSVPForm confirmationMessage={content.sections.rsvp.confirmationMessage} /> */}
-          {/* <Registry entries={content.sections.registry.entries} notes={content.sections.registry.notes} /> */}
-          {/* <Gallery
-            images={content.sections.gallery.images}
-            lightboxEnabled={content.sections.gallery.lightbox}
-          /> */}
         </main>
         <Footer email={content.sections.contact.email} siteTitle={content.global.siteTitle} />
       </div>
@@ -127,7 +104,7 @@ export default function Home({ content }) {
   );
 }
 
-export async function getStaticProps() {
+export function getProps() {
   const content = {
     global: {
       siteTitle: "Alex & Claire's Wedding",
@@ -136,10 +113,10 @@ export async function getStaticProps() {
     },
     sections: {
       hero: {
-        headline: 'Alex & Claire are getting married',
+        headline: 'Alex & Claire',
         subheadline: 'October 10, 2026 — Boone, Iowa',
         ctaText: 'View Details',
-        heroImageUrl: null
+        heroImageUrl: '/images/bar-wide-crop.jpeg'
       },
       details: {
         ceremonyTime: 'TBD',
@@ -162,16 +139,6 @@ export async function getStaticProps() {
             address: '1745 SE Marshall St, Boone, IA 50036',
             link: 'https://www.wyndhamhotels.com/baymont/boone-iowa/baymont-inn-suites-boone/overview'
           },
-          // {
-          //   name: 'Hotel Kansas City',
-          //   address: '1228 Baltimore Ave, Kansas City, MO',
-          //   link: 'https://www.hotelkc.com'
-          // },
-          // {
-          //   name: 'Loews Kansas City Hotel',
-          //   address: '1515 Wyandotte St, Kansas City, MO',
-          //   link: 'https://www.loewshotels.com/kansas-city-hotel'
-          // }
         ],
         notes: 'We recommend booking early. Feel free to reach out if you would like additional suggestions.'
       },
@@ -179,10 +146,7 @@ export async function getStaticProps() {
         confirmationMessage: 'Thank you for your RSVP! We can’t wait to celebrate with you.'
       },
       registry: {
-        entries: [
-          // { platform: 'Amazon', url: null },
-          // { platform: 'Zola', url: null }
-        ],
+        entries: [],
         notes: 'Your presence is the greatest gift! If you would like to contribute, our registry links will be added here soon.'
       },
       gallery: {
@@ -195,9 +159,5 @@ export async function getStaticProps() {
     }
   };
 
-  return {
-    props: {
-      content
-    }
-  };
+  return content;
 }

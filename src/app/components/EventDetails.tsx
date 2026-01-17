@@ -1,9 +1,9 @@
-export default function EventDetails({ ceremony, reception, dressCode, notes }) {
+export default function EventDetails({ ceremony, reception, dressCode, notes }: { ceremony: { time: string; location: string }; reception: { time: string; location: string }; dressCode: string; notes: string; }) {
   return (
     <section id="details" className="bg-background px-6 py-20 sm:px-10">
       <div className="mx-auto max-w-4xl">
         <h2 className="font-display text-3xl tracking-tight text-text sm:text-[1.75rem]">Wedding Day Details</h2>
-        <span className="mb-4 inline-flex items-center rounded-full border border-[#e7cfa4] bg-white/80 px-5 py-1 text-xs tracking-[0.25em] uppercase text-[#bfa76a] shadow-sm">
+        <span className="mb-4 inline-flex items-center rounded-full border border-[#e7cfa4] bg-white/80 px-5 py-1 text-xs tracking-[0.25em] uppercase text-[#bfa76a] shadow-xs">
           October 10, 2026 · Boone, Iowa
         </span>
         <p className="text-base text-text/80">

@@ -1,4 +1,4 @@
-export default function Registry({ entries, notes }) {
+export default function Registry({ entries, notes }: { entries: { platform: string; url?: string }[]; notes: string; }) {
   return (
     <section id="registry" className="bg-accent/20 px-6 py-20 sm:px-10">
       <div className="mx-auto max-w-4xl">
@@ -8,7 +8,7 @@ export default function Registry({ entries, notes }) {
           {entries.map((entry) => (
             <article
               key={entry.platform}
-              className="flex flex-col rounded-3xl border border-primary/40 bg-background p-6 shadow-sm"
+              className="flex flex-col rounded-3xl border border-primary/40 bg-background p-6 shadow-xs"
             >
               <h3 className="font-display text-xl text-text">{entry.platform}</h3>
               {entry.url ? (

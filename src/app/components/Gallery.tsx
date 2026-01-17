@@ -20,8 +20,8 @@ const FALLBACK_IMAGES = [
   }
 ];
 
-export default function Gallery({ images, lightboxEnabled = true }) {
-  const [activeImage, setActiveImage] = useState(null);
+export default function Gallery({ images, lightboxEnabled = true }: { images: { src: string; alt: string }[]; lightboxEnabled?: boolean; }) {
+  const [activeImage, setActiveImage] = useState(null as { src: string; alt: string } | null);
   const galleryImages = images.length > 0 ? images : FALLBACK_IMAGES;
 
   const closeLightbox = () => setActiveImage(null);
@@ -38,7 +38,7 @@ export default function Gallery({ images, lightboxEnabled = true }) {
             <button
               type="button"
               key={`${image.src}-${index}`}
-              className="group relative mb-4 w-full overflow-hidden rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default"
+              className="group relative mb-4 w-full overflow-hidden rounded-3xl focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default"
               onClick={() => lightboxEnabled && setActiveImage(image)}
               aria-label={`View larger ${image.alt}`}
               disabled={!lightboxEnabled}
@@ -75,7 +75,7 @@ export default function Gallery({ images, lightboxEnabled = true }) {
             <button
               type="button"
               onClick={closeLightbox}
-              className="absolute right-4 top-4 rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-text shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="absolute right-4 top-4 rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-text shadow focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
             >
               Close
             </button>
