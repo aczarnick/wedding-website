@@ -1,13 +1,7 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: SherlyKitchen;
-  font-style: normal;
-  font-weight: 200 700;
-  font-display: swap;
-  src: url("../../public/fonts/SherlyKitchen.ttf") format("truetype");
-}
-
-@theme {
-  --font-kitchen: "SherlyKitchen", "sans-serif";
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-serif: var(--font-playfair-serif);
 }

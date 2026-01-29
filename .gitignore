@@ -35,3 +35,6 @@ vercel
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# MacOS
+.DS_Store
