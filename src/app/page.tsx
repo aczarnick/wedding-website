@@ -29,7 +29,7 @@ const Home = () => {
           <div className='md:hidden mr-5 pt-1'>
             <button 
               aria-label="Open mobile menu"
-              onClick={() => setIsMobileMenuOpen(true)}
+              onClick={toggleMobileMenu}
             > 
               <svg className='h-6.5 w-6.5' fill='current-color' viewBox="0 0 18 18">
 					      <title>Menu</title>
@@ -52,7 +52,7 @@ const Home = () => {
             className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
               isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
-            onClick={() => setIsMobileMenuOpen(false)}
+            onClick={toggleMobileMenu}
           />
 
           {/* Mobile Nav Links - hidden by default */}

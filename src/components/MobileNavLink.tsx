@@ -1,4 +1,3 @@
-import { on } from "events";
 import { MouseEventHandler } from "react";
 
 interface MobileNavLinkProps {
