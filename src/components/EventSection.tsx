@@ -15,6 +15,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
   mapLink,
   image,
   imageAlt,
+  flip,
   mobileImageWidth = 246,
   mobileImageHeight = 164,
   desktopImageWidth = 342,
@@ -42,7 +43,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
       {/* Desktop Layout */}
       <div className='hidden md:flex flex-row items-center min-h-screen justify-center gap-10'>
         <div
-          className={title === 'Ceremony' ? '' : 'order-2'}
+          className={flip ? 'order-2' : ''}
         >
           <Image
             src={image}

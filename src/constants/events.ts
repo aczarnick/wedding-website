@@ -5,6 +5,7 @@ export interface EventDetails {
   mapLink: string;
   image: string;
   imageAlt: string;
+  flip?: boolean;
 }
 
 export const EVENTS: Record<string, EventDetails> = {
@@ -23,6 +24,7 @@ export const EVENTS: Record<string, EventDetails> = {
     mapLink: "https://maps.app.goo.gl/oStkJhh8UEmdLwWG8",
     image: "/images/lift-bar.jpg",
     imageAlt: "Alex lifting Claire in the air at the bar",
+    flip: true,
   },
 };
 
