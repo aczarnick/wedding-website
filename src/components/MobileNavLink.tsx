@@ -8,11 +8,15 @@ interface MobileNavLinkProps {
 }
 
 export const MobileNavLink: React.FC<MobileNavLinkProps> = ({ href, label, isLast, onClick }) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(e);
+  };
+
   return (
     <a 
       className={`block p-4 ${!isLast ? 'border-b border-black' : ''}`}
       href={href}
-      onClick={onClick}
+      onClick={handleClick}
     >
       {label}
     </a>

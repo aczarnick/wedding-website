@@ -33,10 +33,18 @@ npm run lint     # Lint with ESLint
 
 ### Project Structure
 
-- `/src/app/page.tsx` – Main page component with all sections and mobile menu state
+- `/src/app/page.tsx` – Main page component (page orchestrator)
 - `/src/app/layout.tsx` – Root layout with fonts and metadata
-- `/src/components/` – Reusable React components
 - `/src/app/globals.css` – Tailwind CSS v4 theme configuration
+- `/src/components/` – Reusable React components:
+  - `Header.tsx` – Navigation bar and mobile menu
+  - `EventSection.tsx` – Reusable ceremony/reception section component
+  - `SectionContainer.tsx` – Layout wrapper with snap-scroll styling
+  - `MobileNavLink.tsx` – Styled mobile navigation link
+- `/src/utils/` – Utility functions:
+  - `dateUtils.ts` – Wedding countdown calculator
+- `/src/constants/` – Application constants:
+  - `events.ts` – Event data (Ceremony, Reception) and navigation links
 - `/public/images/` – Optimized images for sections and hero
 
 ### Code Standards
