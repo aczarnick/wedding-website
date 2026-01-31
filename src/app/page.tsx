@@ -31,9 +31,7 @@ const Home = () => {
           <h1 className='text-5xl'>Alex & Claire</h1>
           <p className='text-2xl mt-5'>October 10, 2026 - Boone, IA</p> 
           <p className='text-2xl'>{daysToGo}</p>
-          <button className='text-black text-2xl bg-white/80 px-8 py-3 mt-5'>
-            RSVP
-          </button>
+          <button className='text-black text-2xl bg-white/80 px-8 py-3 mt-5'>RSVP</button>
         </div>
       </div>
 
