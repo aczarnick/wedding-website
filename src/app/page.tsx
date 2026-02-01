@@ -15,7 +15,7 @@ const Home = () => {
   const daysToGo = DaysUntilWedding();
 
   return (
-    <div className='flex flex-col max-h-screen overflow-x-hidden overflow-y-scroll snap-y'>
+    <div className='flex flex-col overflow-x-hidden'>
       <HeroSection 
         isMobileMenuOpen={isMobileMenuOpen}
         onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
