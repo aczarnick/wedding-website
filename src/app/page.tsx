@@ -5,8 +5,9 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { EventSection } from '@/components/EventSection';
 import { SectionContainer } from '@/components/SectionContainer';
-import { EVENTS } from '@/constants/events';
+import { EVENTS, HOTELS } from '@/constants/events';
 import { DaysUntilWedding } from '@/utils/dateUtils';
+import { TravelSection } from '@/components/TravelSection';
 
 const Home = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -20,6 +21,7 @@ const Home = () => {
           alt="Alex and Claire holding hands in trees" 
           fill
           className='bg-cover object-cover object-center -z-10'
+          preload={true}
         />
 
         <Header 
@@ -42,8 +44,12 @@ const Home = () => {
       <SectionContainer>
         <EventSection {...EVENTS.reception} />
       </SectionContainer>
+
       <SectionContainer id="Travel">
-        <h2 className="text-3xl font-serif">Travel</h2>
+        <h1 className="text-3xl font-serif text-center mt-10">Travel Recomendations</h1>
+        <TravelSection {...HOTELS.cobblestone} />
+        <TravelSection {...HOTELS.baymont} />
+        <h1 className="text-xl font-serif text-center mt-10">Issues with booking? Let us know!</h1>
       </SectionContainer>
       <SectionContainer id="FAQs">
         <h2 className="text-3xl font-serif">FAQs</h2>
