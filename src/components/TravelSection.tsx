@@ -1,4 +1,4 @@
-import {HotelDetails } from '@/constants/events';
+import { HotelDetails } from '@/constants/hotels';
 
 export const TravelSection: React.FC<HotelDetails> = ({
   name,
@@ -9,7 +9,7 @@ export const TravelSection: React.FC<HotelDetails> = ({
 }) => {
   return (
     <>
-      <div className="flex flex-col md:flex-row justify-center items-center gap-10 mt-10 mb-10">
+      <div className="flex flex-col md:flex-row justify-center items-center gap-10">
         <div className="p-5 max-w-sm text-center font-serif">
           <a 
             className="text-xl font-serif mb-5 font-bold underline"
