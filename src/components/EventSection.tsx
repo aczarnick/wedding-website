@@ -16,11 +16,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
   image,
   imageAlt,
   flip,
-  subtitle,
-  mobileImageWidth = 246,
-  mobileImageHeight = 164,
-  desktopImageWidth = 342,
-  desktopImageHeight = 512,
+  subtitle
 }) => {
   return (
     <>
@@ -31,8 +27,6 @@ export const EventSection: React.FC<EventSectionProps> = ({
         <Image
           src={image}
           alt={imageAlt}
-          width={mobileImageWidth}
-          height={mobileImageHeight}
           className="mt-10 shadow-lg/70 rounded-2xl"
         />
         <p className="text-lg mt-6 text-sage-800">{time}</p>
@@ -50,8 +44,6 @@ export const EventSection: React.FC<EventSectionProps> = ({
           <Image
             src={image}
             alt={imageAlt}
-            width={desktopImageWidth}
-            height={desktopImageHeight}
             className="shadow-lg/70 rounded-3xl basis-1/2"
           />
         </div>

@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { Header } from './Header';
+import handhold from '../../public/images/trees-handhold.jpg';
 
 interface HeroSectionProps {
   isMobileMenuOpen: boolean;
@@ -15,12 +16,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   return (
     <div id='Home' className='min-h-screen relative'>
       <Image 
-        src="/images/trees-handhold.jpg"
+        src={handhold}
         alt="Alex and Claire holding hands in trees" 
         fill
         className='bg-cover object-cover object-center -z-10'
         preload={true}
-        quality={90}
+        quality={100}
         sizes="100vw"
       />
       <div className="absolute inset-0 bg-linear-to-b from-black/30 via-black/10 to-black/40 -z-10" />
