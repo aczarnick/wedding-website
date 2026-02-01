@@ -9,7 +9,7 @@ import { EVENTS } from '@/constants/events';
 import { HOTELS } from '@/constants/hotels';
 import { DaysUntilWedding } from '@/utils/dateUtils';
 import { TravelSection } from '@/components/TravelSection';
-import { SectionDivider } from '@/components/SectionDivider';
+import { GradientGlowDivider, SideLinesDivider, BottomGradientDivider } from '@/components/dividers';
 
 const Home = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -23,25 +23,35 @@ const Home = () => {
         daysToGo={daysToGo}
       />
       <div className='bg-sage-50/70'>
-        <SectionDivider id='Details'>
+        <GradientGlowDivider 
+          id='Details' 
+          glowPosition="center"
+        >
           <EventSection {...EVENTS.ceremony} />
           <EventSection {...EVENTS.reception} />
-        </SectionDivider>
+        </GradientGlowDivider>
 
-        <SectionDivider id="Travel">
-          <h1 className="text-3xl text-center text-sage-800">Travel Recommendations</h1>
+        <SideLinesDivider 
+          id="Travel" 
+          lineColor="#d2e1cf"
+          lineStyle="solid"
+        >
+          <h1 className="text-3xl text-center text-sage-800 pt-12">Travel Recommendations</h1>
           <p className="text-center text-sm uppercase tracking-[0.3em] text-sage-700/70 mt-3">Stay nearby</p>
           <div className="mt-10 space-y-10 pb-16">
             <TravelSection {...HOTELS.cobblestone} />
             <TravelSection {...HOTELS.baymont} />
           </div>
-          <h1 className="text-lg text-center pb-16 text-sage-700">Issues with booking? Let us know!</h1>
-        </SectionDivider>
+          <p className="text-lg text-center pb-10 text-sage-700">Issues with booking? Let us know!</p>
+        </SideLinesDivider>
 
-        <SectionDivider id="FAQs">
+        <BottomGradientDivider 
+          id="FAQs" 
+          gradientColor="#e4efe2"
+        >
           <FAQSection />
           <Footer />
-        </SectionDivider>
+        </BottomGradientDivider>
       </div>
     </div>
   );
