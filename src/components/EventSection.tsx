@@ -25,7 +25,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
     <>
       {/* Mobile Layout */}
       <div className='flex flex-col md:hidden items-center min-h-screen'>
-        <p className="text-5xl font-serif mt-5">{title}</p>
+        <p className="text-3xl font-serif text-center mt-10">{title}</p>
         <Image
           src={image}
           alt={imageAlt}
