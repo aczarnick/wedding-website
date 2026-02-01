@@ -20,7 +20,7 @@ const playfair = Playfair_Display(
 )
 
 export const metadata: Metadata = {
-  title: "Alex & Claire Wedding",
+  title: "Alex & Claire's Wedding",
   description: "Claire and Alex are getting married!",
 };
 
