@@ -7,7 +7,7 @@ interface SectionContainerProps {
 
 export const SectionContainer: React.FC<SectionContainerProps> = ({ children, id }) => {
   return (
-    <div id={id} className='snap-center min-h-screen bg-zinc-100'>
+    <div id={id} className='snap-center min-h-screen bg-zinc-100 flex flex-col'>
       {children}
     </div>
   );

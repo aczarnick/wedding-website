@@ -62,13 +62,20 @@ const Home = () => {
           <p className="">A: Yes! Following the ceremony there will be a cocktail hour(-ish). After that, there will be a full dinner and dessert! The bar will be open all night with beer and seltzers! If beer and seltzers aren't for you, feel free to bring your own!</p>
         </div>
         <p className="text-xl text-center mt-10">Come back for more updates!</p>
+
+        {/* Footer */}
+        <div className='flex flex-col flex-1 justify-end'>
+          <p className='flex items-center justify-center text-sm h-20 bg-gray-200'>© 2026 Made by Alex, so send all complaints to him.</p>
+        </div>
       </SectionContainer>
-      <SectionContainer id="Registry">
+      {/* <SectionContainer id="Registry">
         <h1 className="text-3xl font-serif">Registry</h1>
       </SectionContainer>
       <SectionContainer id="Gallery">
         <h1 className="text-3xl font-serif">See our Gallery</h1>
-      </SectionContainer>
+      </SectionContainer> */}
+
+
     </div>
   );
 };
