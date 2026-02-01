@@ -20,6 +20,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         fill
         className='bg-cover object-cover object-center -z-10'
         preload={true}
+        quality={90}
+        sizes="100vw"
       />
       <div className="absolute inset-0 bg-linear-to-b from-black/30 via-black/10 to-black/40 -z-10" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,248,244,0.35),transparent_45%)] -z-10" />
