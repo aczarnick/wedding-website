@@ -24,7 +24,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
   return (
     <>
       {/* Mobile Layout */}
-      <div className='flex flex-col md:hidden items-center min-h-screen'>
+      <div className='flex flex-col md:hidden items-center'>
         <p className="text-3xl text-center mt-10">{title}</p>
         <Image
           src={image}
@@ -35,13 +35,13 @@ export const EventSection: React.FC<EventSectionProps> = ({
         />
         <p className="text-xl mt-5">{time}</p>
         <p className="text-xl">{address}</p>
-        <a className="text-xl underline mt-5" href={mapLink}>
+        <a className="text-xl underline" href={mapLink}>
           Map
         </a>
       </div>
 
       {/* Desktop Layout */}
-      <div className='hidden md:flex flex-row items-center min-h-screen justify-center gap-10'>
+      <div className='hidden md:flex flex-row items-center justify-center gap-5 mt-20 mx-50'>
         <div
           className={flip ? 'order-2' : ''}
         >
@@ -53,11 +53,11 @@ export const EventSection: React.FC<EventSectionProps> = ({
             className="shadow-lg/70 rounded-lg basis-1/2"
           />
         </div>
-        <div className={`text-center basis-1/2 ${title === 'Ceremony' ? '' : 'order-1'}`}>
-          <p className="text-5xl mt-5">{title}</p>
+        <div className={`text-center basis-1/2`}>
+          <p className="text-5xl">{title}</p>
           <p className="text-xl mt-5">{time}</p>
           <p className="text-xl">{address}</p>
-          <a className="text-xl underline mt-20" href={mapLink}>
+          <a className="text-xl underline" href={mapLink}>
             Map
           </a>
         </div>

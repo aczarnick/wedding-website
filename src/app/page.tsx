@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { HeroSection } from '@/components/HeroSection';
 import { EventSection } from '@/components/EventSection';
-import { SectionContainer } from '@/components/SectionContainer';
 import { FAQSection } from '@/components/FAQSection';
 import { Footer } from '@/components/Footer';
 import { EVENTS } from '@/constants/events';
@@ -22,26 +21,24 @@ const Home = () => {
         onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         daysToGo={daysToGo}
       />
+      <div className='bg-zinc-50'>
+        <div id='Details'>
+          <EventSection {...EVENTS.ceremony} />
+          <EventSection {...EVENTS.reception} />
+        </div>
 
-      <SectionContainer id="Details">
-        <EventSection {...EVENTS.ceremony} />
-      </SectionContainer>
+        <div id="Travel">
+          <h1 className="text-3xl text-center mt-10">Travel Recomendations</h1>
+          <TravelSection {...HOTELS.cobblestone} />
+          <TravelSection {...HOTELS.baymont} />
+          <h1 className="text-xl text-center mt-10">Issues with booking? Let us know!</h1>
+        </div>
 
-      <SectionContainer>
-        <EventSection {...EVENTS.reception} />
-      </SectionContainer>
-
-      <SectionContainer id="Travel">
-        <h1 className="text-3xl text-center mt-10">Travel Recomendations</h1>
-        <TravelSection {...HOTELS.cobblestone} />
-        <TravelSection {...HOTELS.baymont} />
-        <h1 className="text-xl text-center mt-10">Issues with booking? Let us know!</h1>
-      </SectionContainer>
-
-      <SectionContainer id="FAQs">
-        <FAQSection />
-        <Footer />
-      </SectionContainer>
+        <div id="FAQs">
+          <FAQSection />
+          <Footer />
+        </div>
+      </div>
     </div>
   );
 };
