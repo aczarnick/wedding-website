@@ -24,24 +24,25 @@ export const EventSection: React.FC<EventSectionProps> = ({
   return (
     <>
       {/* Mobile Layout */}
-      <div className='flex flex-col md:hidden items-center'>
-        <p className="text-3xl text-center mt-10">{title}</p>
+      <div className='flex flex-col md:hidden items-center px-6 py-12'>
+        <p className="text-3xl text-center text-sage-800">{title}</p>
+        <p className="text-xs uppercase tracking-[0.35em] text-sage-700/70 mt-3">Details</p>
         <Image
           src={image}
           alt={imageAlt}
           width={mobileImageWidth}
           height={mobileImageHeight}
-          className="mt-10 shadow-lg/70 rounded-lg"
+          className="mt-10 shadow-lg/70 rounded-2xl"
         />
-        <p className="text-xl mt-5">{time}</p>
-        <p className="text-xl">{address}</p>
-        <a className="text-xl underline" href={mapLink}>
+        <p className="text-lg mt-6 text-sage-800">{time}</p>
+        <p className="text-base text-sage-700">{address}</p>
+        <a className="text-base underline text-sage-700 hover:text-sage-800" href={mapLink}>
           Map
         </a>
       </div>
 
       {/* Desktop Layout */}
-      <div className='hidden md:flex flex-row items-center justify-center gap-5 mt-20 mx-50'>
+      <div className='hidden md:flex flex-row items-center justify-center gap-12 py-20 px-10 lg:px-24'>
         <div
           className={flip ? 'order-2' : ''}
         >
@@ -50,14 +51,15 @@ export const EventSection: React.FC<EventSectionProps> = ({
             alt={imageAlt}
             width={desktopImageWidth}
             height={desktopImageHeight}
-            className="shadow-lg/70 rounded-lg basis-1/2"
+            className="shadow-lg/70 rounded-3xl basis-1/2"
           />
         </div>
-        <div className={`text-center basis-1/2`}>
-          <p className="text-5xl">{title}</p>
-          <p className="text-xl mt-5">{time}</p>
-          <p className="text-xl">{address}</p>
-          <a className="text-xl underline" href={mapLink}>
+        <div className="text-center basis-1/2">
+          <p className="text-5xl text-sage-800">{title}</p>
+          <p className="text-xs uppercase tracking-[0.45em] text-sage-700/70 mt-4">Details</p>
+          <p className="text-lg mt-6 text-sage-800">{time}</p>
+          <p className="text-base text-sage-700">{address}</p>
+          <a className="text-base underline text-sage-700 hover:text-sage-800" href={mapLink}>
             Map
           </a>
         </div>

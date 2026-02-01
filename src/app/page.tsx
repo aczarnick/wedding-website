@@ -9,6 +9,7 @@ import { EVENTS } from '@/constants/events';
 import { HOTELS } from '@/constants/hotels';
 import { DaysUntilWedding } from '@/utils/dateUtils';
 import { TravelSection } from '@/components/TravelSection';
+import { SectionDivider } from '@/components/SectionDivider';
 
 const Home = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -21,20 +22,28 @@ const Home = () => {
         onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         daysToGo={daysToGo}
       />
-      <div className='bg-zinc-50'>
-        <div id='Details'>
+      <div className='bg-sage-50/70'>
+        <div id='Details' className='bg-[radial-gradient(circle_at_top,rgba(210,225,207,0.6),transparent_55%)]'>
+          <SectionDivider className="text-sage-100" />
           <EventSection {...EVENTS.ceremony} />
           <EventSection {...EVENTS.reception} />
         </div>
 
-        <div id="Travel">
-          <h1 className="text-3xl text-center mt-10">Travel Recomendations</h1>
-          <TravelSection {...HOTELS.cobblestone} />
-          <TravelSection {...HOTELS.baymont} />
-          <h1 className="text-xl text-center mt-10">Issues with booking? Let us know!</h1>
+        <SectionDivider className="text-sage-100" />
+
+        <div id="Travel" className='bg-[radial-gradient(circle_at_top,rgba(210,225,207,0.6),transparent_55%)]'>
+          <h1 className="text-3xl text-center mt-16 text-sage-800">Travel Recommendations</h1>
+          <p className="text-center text-sm uppercase tracking-[0.3em] text-sage-700/70 mt-3">Stay nearby</p>
+          <div className="mt-10 space-y-10 pb-16">
+            <TravelSection {...HOTELS.cobblestone} />
+            <TravelSection {...HOTELS.baymont} />
+          </div>
+          <h1 className="text-lg text-center pb-16 text-sage-700">Issues with booking? Let us know!</h1>
         </div>
 
-        <div id="FAQs">
+        <SectionDivider className="text-sage-100" />
+
+        <div id="FAQs" className='bg-[radial-gradient(circle_at_top,rgba(210,225,207,0.6),transparent_55%)]'>
           <FAQSection />
           <Footer />
         </div>

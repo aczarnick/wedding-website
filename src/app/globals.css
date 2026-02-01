@@ -4,5 +4,11 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
+  --color-sage-50: #f5f8f4;
+  --color-sage-100: #e4efe2;
+  --color-sage-200: #d2e1cf;
+  --color-sage-700: #355243;
+  --color-sage-800: #2a3f33;
+
   --font-serif: var(--font-playfair-display), serif;
 }

@@ -14,7 +14,7 @@ export const MobileNavLink: React.FC<MobileNavLinkProps> = ({ href, label, isLas
 
   return (
     <a 
-      className={`block p-4 ${!isLast ? 'border-b border-black' : ''}`}
+      className={`block p-4 text-sage-800 ${!isLast ? 'border-b border-sage-200' : ''}`}
       href={href}
       onClick={handleClick}
     >

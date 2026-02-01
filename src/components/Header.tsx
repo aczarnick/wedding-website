@@ -10,8 +10,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, onToggleMobileMenu }) => {
   return (
-    <div className='flex justify-between md:px-20 lg:px-50 xl:px-70 bg-white/70 py-2.5 z-20 text-black text-2xl'>
-      <a className='ml-5' href='#Home'>
+    <div className='relative z-50 flex justify-between md:px-20 lg:px-50 xl:px-70 bg-white/70 backdrop-blur-md py-3 text-black text-xl shadow-sm'>
+      <a className='ml-5 text-sage-800 hover:text-sage-700' href='#Home'>
         Home
       </a>
 
@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, onToggleMobile
       {/* Desktop Nav Links */}
       <div className='hidden md:contents'>
         {NAV_LINKS.map((link) => (
-          <a key={link} href={`#${link}`}>
+          <a key={link} className="text-sage-800 hover:text-sage-700" href={`#${link}`}>
             {link}
           </a>
         ))}
@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, onToggleMobile
       />
 
       {/* Mobile Nav Drawer */}
-      <div className={`fixed top-0 right-0 min-h-screen w-64 bg-slate-100 shadow-lg transform md:hidden z-50
+      <div className={`fixed top-0 right-0 min-h-screen w-64 bg-sage-50 shadow-lg transform md:hidden z-50
         transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full"}`
         }>
         <MobileNavLink href='#Home' label='Home' onClick={onToggleMobileMenu} />
