@@ -25,7 +25,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
     <>
       {/* Mobile Layout */}
       <div className='flex flex-col md:hidden items-center min-h-screen'>
-        <p className="text-3xl font-serif text-center mt-10">{title}</p>
+        <p className="text-3xl text-center mt-10">{title}</p>
         <Image
           src={image}
           alt={imageAlt}
@@ -53,8 +53,8 @@ export const EventSection: React.FC<EventSectionProps> = ({
             className="shadow-lg/70 rounded-lg basis-1/2"
           />
         </div>
-        <div className={`text-center font-serif basis-1/2 ${title === 'Ceremony' ? '' : 'order-1'}`}>
-          <p className="text-5xl font-serif mt-5">{title}</p>
+        <div className={`text-center basis-1/2 ${title === 'Ceremony' ? '' : 'order-1'}`}>
+          <p className="text-5xl mt-5">{title}</p>
           <p className="text-xl mt-5">{time}</p>
           <p className="text-xl">{address}</p>
           <a className="text-xl underline mt-20" href={mapLink}>

@@ -10,7 +10,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, onToggleMobileMenu }) => {
   return (
-    <div className='flex justify-between md:px-20 lg:px-50 xl:px-70 bg-white/70 py-2.5 z-20 text-black font-serif text-2xl'>
+    <div className='flex justify-between md:px-20 lg:px-50 xl:px-70 bg-white/70 py-2.5 z-20 text-black text-2xl'>
       <a className='ml-5' href='#Home'>
         Home
       </a>

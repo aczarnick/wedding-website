@@ -27,7 +27,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         onToggleMobileMenu={onToggleMobileMenu}
       />
       
-      <div className='flex flex-col justify-center items-center mt-15 drop-shadow-xl/70 text-white font-serif'>
+      <div className='flex flex-col justify-center items-center mt-15 drop-shadow-xl/70 text-white'>
         <h1 className='text-5xl'>Alex & Claire</h1>
         <p className='text-2xl mt-5'>October 10, 2026 - Boone, IA</p> 
         <p className='text-2xl'>{daysToGo}</p>

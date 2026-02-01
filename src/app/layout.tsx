@@ -1,21 +1,11 @@
 import type { Metadata } from "next";
-import { Cinzel, Playfair_Display} from "next/font/google";
+import { Playfair_Display } from "next/font/google";
 import "./globals.css";
-
-const cinzel = Cinzel
-({
-  variable: "--font-cinzel-serif",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
 const playfair = Playfair_Display(
   {
-    variable: "--font-playfair-serif",
+    variable: "--font-playfair-display",
     subsets: ["latin"],
-    weight: ["400", "500", "600", "700"],
-    display: "swap",
   }
 )
 
@@ -32,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${cinzel.variable} ${playfair.variable} font-main antialiased`}
+        className={`${playfair.variable} font-serif antialiased`}
       >
         {children}
       </body>

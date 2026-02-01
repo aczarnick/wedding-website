@@ -10,9 +10,9 @@ export const TravelSection: React.FC<HotelDetails> = ({
   return (
     <>
       <div className="flex flex-col md:flex-row justify-center items-center gap-10">
-        <div className="p-5 max-w-sm text-center font-serif">
+        <div className="p-5 max-w-sm text-center">
           <a 
-            className="text-xl font-serif mb-5 font-bold underline"
+            className="text-xl mb-5 font-bold underline"
             href={bookingLink}
           >
             {name}

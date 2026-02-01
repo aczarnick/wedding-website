@@ -32,10 +32,10 @@ const Home = () => {
       </SectionContainer>
 
       <SectionContainer id="Travel">
-        <h1 className="text-3xl font-serif text-center mt-10">Travel Recomendations</h1>
+        <h1 className="text-3xl text-center mt-10">Travel Recomendations</h1>
         <TravelSection {...HOTELS.cobblestone} />
         <TravelSection {...HOTELS.baymont} />
-        <h1 className="text-xl font-serif text-center mt-10">Issues with booking? Let us know!</h1>
+        <h1 className="text-xl text-center mt-10">Issues with booking? Let us know!</h1>
       </SectionContainer>
 
       <SectionContainer id="FAQs">
