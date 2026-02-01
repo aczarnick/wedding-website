@@ -23,30 +23,25 @@ const Home = () => {
         daysToGo={daysToGo}
       />
       <div className='bg-sage-50/70'>
-        <div id='Details' className='bg-[radial-gradient(circle_at_top,rgba(210,225,207,0.6),transparent_55%)]'>
-          <SectionDivider className="text-sage-100" />
+        <SectionDivider id='Details'>
           <EventSection {...EVENTS.ceremony} />
           <EventSection {...EVENTS.reception} />
-        </div>
+        </SectionDivider>
 
-        <SectionDivider className="text-sage-100" />
-
-        <div id="Travel" className='bg-[radial-gradient(circle_at_top,rgba(210,225,207,0.6),transparent_55%)]'>
-          <h1 className="text-3xl text-center mt-16 text-sage-800">Travel Recommendations</h1>
+        <SectionDivider id="Travel">
+          <h1 className="text-3xl text-center text-sage-800">Travel Recommendations</h1>
           <p className="text-center text-sm uppercase tracking-[0.3em] text-sage-700/70 mt-3">Stay nearby</p>
           <div className="mt-10 space-y-10 pb-16">
             <TravelSection {...HOTELS.cobblestone} />
             <TravelSection {...HOTELS.baymont} />
           </div>
           <h1 className="text-lg text-center pb-16 text-sage-700">Issues with booking? Let us know!</h1>
-        </div>
+        </SectionDivider>
 
-        <SectionDivider className="text-sage-100" />
-
-        <div id="FAQs" className='bg-[radial-gradient(circle_at_top,rgba(210,225,207,0.6),transparent_55%)]'>
+        <SectionDivider id="FAQs">
           <FAQSection />
           <Footer />
-        </div>
+        </SectionDivider>
       </div>
     </div>
   );

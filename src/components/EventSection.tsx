@@ -16,6 +16,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
   image,
   imageAlt,
   flip,
+  subtitle,
   mobileImageWidth = 246,
   mobileImageHeight = 164,
   desktopImageWidth = 342,
@@ -26,7 +27,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
       {/* Mobile Layout */}
       <div className='flex flex-col md:hidden items-center px-6 py-12'>
         <p className="text-3xl text-center text-sage-800">{title}</p>
-        <p className="text-xs uppercase tracking-[0.35em] text-sage-700/70 mt-3">Details</p>
+        <p className="text-xs uppercase tracking-[0.35em] text-sage-700/70 mt-3">{subtitle}</p>
         <Image
           src={image}
           alt={imageAlt}
@@ -56,7 +57,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
         </div>
         <div className="text-center basis-1/2">
           <p className="text-5xl text-sage-800">{title}</p>
-          <p className="text-xs uppercase tracking-[0.45em] text-sage-700/70 mt-4">Details</p>
+          <p className="text-xs uppercase tracking-[0.45em] text-sage-700/70 mt-4">{subtitle}</p>
           <p className="text-lg mt-6 text-sage-800">{time}</p>
           <p className="text-base text-sage-700">{address}</p>
           <a className="text-base underline text-sage-700 hover:text-sage-800" href={mapLink}>
