@@ -14,14 +14,17 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Copy standalone output
+COPY --from=builder /app/.next/standalone ./
+# Copy static assets
+COPY --from=builder /app/.next/static ./.next/static
+# Copy public folder for images and other static files
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
 
 # Use a non-root user for security
 RUN addgroup -g 1001 -S nextjs && adduser -S nextjs -u 1001
+RUN chown -R nextjs:nextjs /app
 USER nextjs
 
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
