@@ -85,7 +85,7 @@ export const Header: React.FC = () => {
 
       {/* Mobile Menu Overlay */}
       <div 
-        className={`fixed inset-0 bg-black/50 z-60 transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-black/50 z-60 transition-opacity duration-300 ${
           isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={toggleMobileMenu}
@@ -94,7 +94,7 @@ export const Header: React.FC = () => {
       {/* Mobile Nav Drawer */}
       <div 
         ref={drawerRef}
-        className={`fixed inset-y-0 right-0 w-64 bg-sage-50 shadow-lg transform md:hidden z-70
+        className={`absolute inset-y-0 right-0 w-64 bg-sage-50 shadow-lg transform md:hidden z-70
         transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full"}`
         }
       >
