@@ -1,6 +1,3 @@
-'use client';
-
-import { useState } from 'react';
 import { HeroSection } from '@/components/HeroSection';
 import { EventSection } from '@/components/EventSection';
 import { FAQSection } from '@/components/FAQSection';
@@ -12,16 +9,11 @@ import { TravelSection } from '@/components/TravelSection';
 import { GradientGlowDivider, SideLinesDivider, BottomGradientDivider } from '@/components/dividers';
 
 const Home = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const daysToGo = DaysUntilWedding();
 
   return (
     <div className='flex flex-col overflow-x-hidden'>
-      <HeroSection 
-        isMobileMenuOpen={isMobileMenuOpen}
-        onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        daysToGo={daysToGo}
-      />
+      <HeroSection daysToGo={daysToGo} />
       <div className='bg-sage-50/70'>
         <GradientGlowDivider 
           id='Details' 
