@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display } from "next/font/google";
 import "./globals.css";
 
@@ -12,6 +12,12 @@ const playfair = Playfair_Display(
 export const metadata: Metadata = {
   title: "Alex & Claire's Wedding",
   description: "Claire and Alex are getting married!",
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

@@ -97,10 +97,6 @@ export const Header: React.FC = () => {
         className={`fixed inset-y-0 right-0 w-64 bg-sage-50 shadow-lg transform md:hidden z-70
         transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full"}`
         }
-        style={{
-          height: '100vh',
-          height: '-webkit-fill-available',
-        }}
       >
         <MobileNavLink href='/' label='Home' onClick={toggleMobileMenu} isRoute={true} />
         {NAV_LINKS.map((link, index) => (
