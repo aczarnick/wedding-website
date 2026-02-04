@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { NAV_LINKS } from '@/constants/events';
 import { MobileNavLink } from './MobileNavLink';
@@ -19,8 +19,30 @@ const isRouteLink = (link: string): boolean => {
 
 export const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
   
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+
+  // Fix for iOS 26 Safari viewport bug
+  useEffect(() => {
+    const updateDrawerHeight = () => {
+      if (drawerRef.current && window.visualViewport) {
+        const height = window.visualViewport.height;
+        drawerRef.current.style.height = `${height}px`;
+      }
+    };
+
+    if (isMobileMenuOpen) {
+      updateDrawerHeight();
+      window.visualViewport?.addEventListener('resize', updateDrawerHeight);
+      window.addEventListener('resize', updateDrawerHeight);
+    }
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateDrawerHeight);
+      window.removeEventListener('resize', updateDrawerHeight);
+    };
+  }, [isMobileMenuOpen]);
 
   return (
     <>
@@ -70,9 +92,16 @@ export const Header: React.FC = () => {
       />
 
       {/* Mobile Nav Drawer */}
-      <div className={`fixed inset-y-0 right-0 w-64 bg-sage-50 shadow-lg transform md:hidden z-70
+      <div 
+        ref={drawerRef}
+        className={`fixed inset-y-0 right-0 w-64 bg-sage-50 shadow-lg transform md:hidden z-70
         transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full"}`
-        }>
+        }
+        style={{
+          height: '100vh',
+          height: '-webkit-fill-available',
+        }}
+      >
         <MobileNavLink href='/' label='Home' onClick={toggleMobileMenu} isRoute={true} />
         {NAV_LINKS.map((link, index) => (
           <MobileNavLink 
