@@ -7,14 +7,14 @@ import { MobileNavLink } from './MobileNavLink';
 
 // Determine if a link is a route (page) or hash (section)
 const getHref = (link: string): string => {
-  if (link === 'Registry' || link === 'Gallery') {
+  if (link === 'Registry' || link === 'Gallery' || link === 'RSVP') {
     return `/${link.toLowerCase()}`;
   }
   return `/#${link}`;
 };
 
 const isRouteLink = (link: string): boolean => {
-  return link === 'Registry' || link === 'Gallery';
+  return link === 'Registry' || link === 'Gallery' || link === 'RSVP';
 };
 
 export const Header: React.FC = () => {

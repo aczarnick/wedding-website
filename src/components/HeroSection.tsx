@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { Header } from './Header';
 import handhold from '../../public/images/trees-handhold.jpg';
 
@@ -28,6 +29,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ daysToGo }) => {
         <h1 className='text-5xl sm:text-6xl mt-4'>Alex & Claire</h1>
         <p className='text-xl sm:text-2xl mt-6'>October 10, 2026 · Boone, IA</p> 
         <p className='text-xl sm:text-2xl mt-2'>{daysToGo}</p>
+        <Link
+          href="/rsvp"
+          className="mt-8 px-8 py-3 text-base uppercase tracking-[0.2em] text-white bg-sage-700/60 backdrop-blur-sm border border-white/40 rounded-full hover:bg-sage-700/80 transition-colors duration-200"
+        >
+          RSVP
+        </Link>
       </div>
     </div>
   );

@@ -1,6 +1,24 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: czarnickwedding_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wedding
+      POSTGRES_PASSWORD: wedding
+      POSTGRES_DB: weddingdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - wedding_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wedding -d weddingdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     container_name: czarnickwedding
@@ -10,10 +28,21 @@ services:
     environment:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
-    # Health check (Docker Compose 3.4+)
+      - DATABASE_URL=postgresql://wedding:wedding@db:5432/weddingdb
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - wedding_net
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 5s
+      start_period: 10s
+
+networks:
+  wedding_net:
+
+volumes:
+  postgres_data:
