@@ -1,79 +1,94 @@
 # Copilot Instructions for Wedding Website
 
-## Build & Test Commands
+## Build & Validation Commands
 
-### Development
+Always run `npm install` before building if dependencies may be out of date.
+
 - **Start dev server:** `npm run dev` → http://localhost:3000
-- **Build for production:** `npm run build`
+- **Build for production:** `npm run build` (must pass with zero errors before any PR)
 - **Run production build:** `npm run start`
-- **Lint code:** `eslint` (add `--fix` to auto-correct)
+- **Lint code:** `npm run lint` (uses ESLint via `eslint-config-next`; add `--fix` to auto-correct)
 
-### No test suite currently configured
+No test suite is currently configured. Validate changes by running `npm run build` and `npm run lint`.
 
 ## High-Level Architecture
 
 **Stack:** Next.js 16 + React 19 + TypeScript 5 + Tailwind CSS v4
 
-**Project Type:** Single-page wedding website with snap-scroll sections and responsive mobile/desktop layouts
+**Project Type:** Multi-page wedding website with a scrollable main page and separate subpages.
+
+**Pages (Next.js App Router):**
+- `/` → `src/app/page.tsx` – Main landing page (server component); renders hero, details, travel, FAQs, and footer
+- `/gallery` → `src/app/gallery/page.tsx` – Gallery page (coming soon placeholder)
+- `/registry` → `src/app/registry/page.tsx` – Registry page (coming soon placeholder)
 
 **Key Files & Directories:**
-- `/src/app/page.tsx` – Main page component (`'use client'`), contains all sections and mobile menu state
-- `/src/app/layout.tsx` – Root layout with metadata, font configuration (Cinzel, Playfair Display)
-- `/src/components/` – Reusable components:
-  - `MobileNavLink.tsx` – Styled anchor for mobile navigation overlay
-  - `SectionContainer.tsx` – Wrapper component with snap-scroll styling
-- `/src/app/globals.css` – Tailwind CSS v4 theme config (custom theme using `@theme inline`)
-- `/public/images/` – Hero and section images (trees-handhold.jpg, ring-shot.jpg, lift-bar.jpg)
-- Next.js Config: `next.config.ts` (output: standalone)
-
-**Design Pattern:**
-- Full page is a single client component (`page.tsx`) with `snap-y snap-mandatory` scroll container
-- Sections use `SectionContainer` wrapper with `snap-center min-h-screen` (full-height sections)
-- Mobile menu: overlapping slide-in drawer with backdrop overlay
-- Responsive design: `md:` and `lg:` breakpoints; mobile-first approach
+- `src/app/layout.tsx` – Root layout; metadata, Playfair Display font variable, global CSS import
+- `src/app/globals.css` – Tailwind CSS v4 import + `@theme inline` block defining the sage color palette and font variable
+- `src/components/Header.tsx` – Sticky nav bar with mobile drawer (`'use client'`); reads `NAV_LINKS` from constants
+- `src/components/HeroSection.tsx` – Hero with countdown; receives `daysToGo` prop from server component
+- `src/components/EventSection.tsx` – Reusable card for ceremony/reception; driven by `EventDetails` type
+- `src/components/TravelSection.tsx` – Hotel recommendation card; driven by `HotelDetails` type
+- `src/components/FAQSection.tsx` – Accordion FAQ list; reads from `src/constants/faqs.ts`
+- `src/components/Footer.tsx` – Site footer
+- `src/components/MobileNavLink.tsx` – Anchor/Link item for the mobile drawer
+- `src/components/dividers/` – Section divider wrappers (`GradientGlowDivider`, `SideLinesDivider`, `BottomGradientDivider`); each accepts an `id` prop used as the scroll anchor target
+- `src/constants/events.ts` – `EVENTS` record (`ceremony`, `reception`) and `NAV_LINKS` array
+- `src/constants/faqs.ts` – `FAQS` data array
+- `src/constants/hotels.ts` – `HOTELS` record (`cobblestone`, `baymont`)
+- `src/utils/dateUtils.ts` – `DaysUntilWedding()` function (returns a formatted string)
+- `public/images/` – Static images: `trees-handhold.jpg`, `ring-shot.jpg`, `lift-bar.jpg`
+- `next.config.ts` – `output: 'standalone'` for containerization
 
 ## Key Conventions
 
 ### Styling & Layout
-- **Tailwind CSS v4** – use only utility classes (no custom CSS components)
-- **CSS-in-JS via `@theme inline`** in `globals.css` for theme variables
-- **Font system:** Cinzel (secondary) and Playfair Display (serif) imported as Google Fonts; variables defined in `layout.tsx` and consumed via CSS
-- **Color palette:** Uses `bg-zinc-100`, `bg-white/70`, `bg-black/50`, etc.; no custom color extension
-- **Snap scroll:** Container has `snap-y snap-mandatory`; sections have `snap-center min-h-screen`
-- **Responsive:** Mobile-first; `hidden md:flex`, `flex md:hidden` for layout switching; also `basis-1/2` for flex column alignment on desktop
+- **Tailwind CSS v4** – utility classes only; no custom CSS components
+- **Custom colors** defined in `globals.css` via `@theme inline`: `sage-50`, `sage-100`, `sage-200`, `sage-700`, `sage-800`
+- **Font:** Only Playfair Display (`--font-playfair-display`); applied as `font-serif` via `@theme inline`
+- **Responsive:** Mobile-first; `md:` breakpoint for desktop nav visibility (`hidden md:contents` / `md:hidden`)
 
-### Component Patterns
-- **`'use client'` directive:** Required at top of interactive components (e.g., `page.tsx` for state and event handlers)
-- **Module path alias:** `@/` resolves to `src/` (e.g., `import { SectionContainer } from '@/components/SectionContainer'`)
-- **Images:** Always use Next.js `Image` component:
-  - Local: `src="/images/..."`, `fill` with object-cover for backgrounds
-  - Responsive widths: Define explicit `width` and `height` props for sized images
-  - Alt text required for accessibility
-- **Navigation:** Anchor links (`href="#SectionId"`) scroll to matching `id` attributes
+### Component & Data Patterns
+- **`'use client'` directive:** Only on components that use React state/hooks (e.g., `Header.tsx`)
+- **`page.tsx` is a server component** – no `'use client'`; calls `DaysUntilWedding()` directly
+- **Module path alias:** `@/` resolves to `src/` (e.g., `import { Header } from '@/components/Header'`)
+- **Images:** Always use Next.js `Image` component with `alt` text; use `StaticImageData` imports for local images in constants
+- **Navigation:** `NAV_LINKS` in `src/constants/events.ts` drives both desktop and mobile nav. `Registry` and `Gallery` route to `/registry` and `/gallery`; all others use `/#SectionId` hash links matching divider `id` props
+- **Section IDs:** `Details`, `Travel`, `FAQs` — these must match the `id` props on the divider components in `page.tsx`
 
 ### TypeScript & Code Quality
-- **Strict mode enabled** in `tsconfig.json`
-- **Target:** ES2017 with bundler module resolution
-- **Path alias:** `"@/*": ["./src/*"]` (configured in `tsconfig.json`)
-- **No `any` types** without justification
-- No unused imports (ESLint enforces via `eslint-config-next`)
-
-### Accessibility & Performance
-- **WCAG AA intent:** Contrast ratios suitable for readability (see palette choices)
-- **Mobile-first:** Ensures keyboard navigation and touch targets on smaller screens
-- **Image optimization:** All images use `next/image` for automatic optimization and lazy loading
-- **Lazy loading:** By default, off-screen images load on demand
+- **Strict mode** enabled in `tsconfig.json`; no `any` types without justification
+- **Path alias:** `"@/*": ["./src/*"]`
+- **No unused imports** (ESLint enforces via `eslint-config-next`)
 
 ### Project Structure
 ```
 src/
   app/
-    layout.tsx       # Root layout, fonts, metadata
-    page.tsx         # Main page (all sections)
-    globals.css      # Tailwind + theme config
+    layout.tsx          # Root layout, font, metadata
+    page.tsx            # Main landing page (server component)
+    globals.css         # Tailwind v4 + sage color theme
+    gallery/page.tsx    # Gallery placeholder page
+    registry/page.tsx   # Registry placeholder page
   components/
+    Header.tsx          # Sticky nav + mobile drawer
+    HeroSection.tsx     # Hero with countdown
+    EventSection.tsx    # Ceremony/Reception card
+    TravelSection.tsx   # Hotel recommendation card
+    FAQSection.tsx      # FAQ accordion
+    Footer.tsx
     MobileNavLink.tsx
-    SectionContainer.tsx
+    dividers/
+      GradientGlowDivider.tsx
+      SideLinesDivider.tsx
+      BottomGradientDivider.tsx
+      index.ts
+  constants/
+    events.ts           # EVENTS record + NAV_LINKS
+    faqs.ts             # FAQS array
+    hotels.ts           # HOTELS record
+  utils/
+    dateUtils.ts        # DaysUntilWedding()
 public/
   images/
     trees-handhold.jpg
@@ -84,15 +99,14 @@ public/
 
 ## Runtime Notes
 
-- **Node.js:** ≥20 (as per `package.json` engines)
-- **No backend API:** Currently static rendering only
-- **Standalone output:** `next.config.ts` sets `output: 'standalone'` for containerization
-- **Future feature hint:** RSVP button placeholder exists in hero section (not yet wired)
-- **Font loading:** Google Fonts configured with `display: "swap"` for best performance
+- **Node.js:** ≥20 (as per `package.json` engines); **npm** 9+
+- **No backend API:** Fully static server-rendered Next.js app
+- **Standalone output:** `next.config.ts` sets `output: 'standalone'`; Docker support via `Dockerfile` and `docker-compose.yml`
+- **Wedding date:** October 10, 2026 — hardcoded in `src/utils/dateUtils.ts`
+- **Gallery & Registry pages** are "Coming Soon" placeholders; `NAV_LINKS` already includes them
 
 ## Development Tips
 
-- Mobile menu state lives in `page.tsx` via `useState(false)` (visible on md breakpoint)
-- To add a section: Create a `SectionContainer id="..."` with content; add matching link in nav
-- Dates hardcoded: Wedding date is October 10, 2026 (used for countdown calculation)
-- Image dimensions: See `page.tsx` for responsive sizing patterns (246×164 mobile, 342×512 desktop)
+- To add a new section to the main page: create a divider component wrapping the content with an `id` prop, add that `id` string to `NAV_LINKS` in `src/constants/events.ts`, and update `Header.tsx`'s `getHref`/`isRouteLink` helpers if it needs a route instead of a hash link
+- To add a new page route: create `src/app/<name>/page.tsx`, add the capitalized name to `NAV_LINKS`, and update the `isRouteLink` helper in `Header.tsx`
+- Always run `npm run build` to catch TypeScript and Next.js errors before finalizing changes
