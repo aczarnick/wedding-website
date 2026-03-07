@@ -1,4 +1,5 @@
 CREATE TYPE "public"."rsvp_status" AS ENUM('pending', 'attending', 'not_attending');--> statement-breakpoint
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";--> statement-breakpoint
 CREATE TABLE "guest_groups" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar NOT NULL,

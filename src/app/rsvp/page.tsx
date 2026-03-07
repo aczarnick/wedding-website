@@ -98,6 +98,8 @@ const RsvpPage = () => {
 
       if (res.status === 204) {
         router.push('/rsvp/thank-you');
+      } else {
+        setSubmitError(true);
       }
     } catch {
       setSubmitError(true);
@@ -122,7 +124,11 @@ const RsvpPage = () => {
             type='text'
             value={searchName}
             onChange={(e) => setSearchName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !isSearching && searchName.trim()) {
+                handleSearch();
+              }
+            }}
             placeholder='Enter your full name to get started'
             className='flex-1 px-4 py-3 border border-sage-200 rounded-lg text-sage-800 placeholder-sage-700/50 bg-white focus:outline-none focus:ring-2 focus:ring-sage-700/40'
           />
