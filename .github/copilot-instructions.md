@@ -99,7 +99,7 @@ public/
 
 ## Runtime Notes
 
-- **Node.js:** ≥20 (as per `package.json` engines); **npm** 9+
+- **Node.js:** ≥20 (as per `package.json` `engines.node`)
 - **No backend API:** Fully static server-rendered Next.js app
 - **Standalone output:** `next.config.ts` sets `output: 'standalone'`; Docker support via `Dockerfile` and `docker-compose.yml`
 - **Wedding date:** October 10, 2026 — hardcoded in `src/utils/dateUtils.ts`
