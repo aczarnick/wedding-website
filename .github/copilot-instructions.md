@@ -100,7 +100,7 @@ public/
 ## Runtime Notes
 
 - **Node.js:** ≥20 (as per `package.json` `engines.node`)
-- **No backend API:** Fully static server-rendered Next.js app
+- **No backend API:** Next.js app with server components and static data in `src/constants/*`
 - **Standalone output:** `next.config.ts` sets `output: 'standalone'`; Docker support via `Dockerfile` and `docker-compose.yml`
 - **Wedding date:** October 10, 2026 — hardcoded in `src/utils/dateUtils.ts`
 - **Gallery & Registry pages** are "Coming Soon" placeholders; `NAV_LINKS` already includes them
