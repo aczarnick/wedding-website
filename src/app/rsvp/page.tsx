@@ -8,7 +8,7 @@ interface GuestMember {
   id: string;
   name: string;
   isPrimary: boolean;
-  rsvpStatus: string;
+  rsvpStatus: 'pending' | 'attending' | 'not_attending';
 }
 
 interface GuestGroup {
@@ -17,7 +17,8 @@ interface GuestGroup {
   members: GuestMember[];
 }
 
-type AttendanceMap = Record<string, 'attending' | 'not_attending'>;
+// undefined means the guest hasn't made a selection yet (was pending)
+type AttendanceMap = Record<string, 'attending' | 'not_attending' | undefined>;
 
 const RsvpPage = () => {
   const router = useRouter();
@@ -61,8 +62,12 @@ const RsvpPage = () => {
   const handleConfirm = (group: GuestGroup) => {
     const initialAttendance: AttendanceMap = {};
     for (const member of group.members) {
-      initialAttendance[member.id] =
-        member.rsvpStatus === 'attending' ? 'attending' : 'not_attending';
+      if (member.rsvpStatus === 'attending') {
+        initialAttendance[member.id] = 'attending';
+      } else if (member.rsvpStatus === 'not_attending') {
+        initialAttendance[member.id] = 'not_attending';
+      }
+      // pending → leave undefined so the guest must make an explicit choice
     }
     setAttendance(initialAttendance);
     setConfirmedGroup(group);
@@ -76,8 +81,11 @@ const RsvpPage = () => {
     setSearchName('');
   };
 
+  const allMembersSelected =
+    confirmedGroup?.members.every((m) => attendance[m.id] !== undefined) ?? false;
+
   const handleSubmit = async () => {
-    if (!confirmedGroup) return;
+    if (!confirmedGroup || !allMembersSelected) return;
 
     setIsSubmitting(true);
     setSubmitError(false);
@@ -234,7 +242,7 @@ const RsvpPage = () => {
                 </ul>
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !allMembersSelected}
                   className='w-full py-3 bg-sage-700 text-white rounded-lg hover:bg-sage-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit RSVP'}

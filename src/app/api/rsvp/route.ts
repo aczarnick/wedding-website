@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { guests, guestGroups } from '@/db/schema';
-import { eq, sql, and } from 'drizzle-orm';
+import { eq, sql, and, inArray } from 'drizzle-orm';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const VALID_RSVP_STATUSES = ['pending', 'attending', 'not_attending'] as const;
 type RsvpStatus = (typeof VALID_RSVP_STATUSES)[number];
@@ -11,16 +13,17 @@ function isValidRsvpStatus(value: string): value is RsvpStatus {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const name = searchParams.get('name');
+  // request.nextUrl is the idiomatic Next.js way to access the parsed URL and its search params
+  const name = request.nextUrl.searchParams.get('name');
 
   if (!name || !name.trim()) {
     return NextResponse.json({ error: 'name query parameter is required' }, { status: 400 });
   }
 
   try {
-    const primaryGuests = await db
-      .select()
+    // Query 1: find every group that has a primary guest matching this name
+    const matchingGroups = await db
+      .select({ groupId: guests.groupId })
       .from(guests)
       .where(
         and(
@@ -29,39 +32,46 @@ export async function GET(request: NextRequest) {
         )
       );
 
-    if (primaryGuests.length === 0) {
+    if (matchingGroups.length === 0) {
       return NextResponse.json({ error: 'No guest found with that name' }, { status: 404 });
     }
 
-    const groupIds = [...new Set(primaryGuests.map((g) => g.groupId))];
+    const groupIds = matchingGroups.map((r) => r.groupId);
 
-    const results = await Promise.all(
-      groupIds.map(async (groupId) => {
-        const group = await db
-          .select()
-          .from(guestGroups)
-          .where(eq(guestGroups.id, groupId))
-          .then((rows) => rows[0]);
-
-        const members = await db
-          .select()
-          .from(guests)
-          .where(eq(guests.groupId, groupId));
-
-        return {
-          groupId: group.id,
-          groupName: group.name,
-          members: members.map((m) => ({
-            id: m.id,
-            name: m.name,
-            isPrimary: m.isPrimary,
-            rsvpStatus: m.rsvpStatus,
-          })),
-        };
+    // Query 2: fetch all members + group info for every matching group in one JOIN
+    const rows = await db
+      .select({
+        groupId: guestGroups.id,
+        groupName: guestGroups.name,
+        memberId: guests.id,
+        memberName: guests.name,
+        memberIsPrimary: guests.isPrimary,
+        memberRsvpStatus: guests.rsvpStatus,
       })
-    );
+      .from(guests)
+      .innerJoin(guestGroups, eq(guests.groupId, guestGroups.id))
+      .where(inArray(guests.groupId, groupIds));
 
-    return NextResponse.json(results, { status: 200 });
+    // Assemble results grouped by groupId — preserves all matching groups for disambiguation
+    type GroupResult = {
+      groupId: string;
+      groupName: string;
+      members: { id: string; name: string; isPrimary: boolean; rsvpStatus: string }[];
+    };
+    const groupMap = new Map<string, GroupResult>();
+    for (const row of rows) {
+      if (!groupMap.has(row.groupId)) {
+        groupMap.set(row.groupId, { groupId: row.groupId, groupName: row.groupName, members: [] });
+      }
+      groupMap.get(row.groupId)!.members.push({
+        id: row.memberId,
+        name: row.memberName,
+        isPrimary: row.memberIsPrimary,
+        rsvpStatus: row.memberRsvpStatus,
+      });
+    }
+
+    return NextResponse.json([...groupMap.values()], { status: 200 });
   } catch (error) {
     console.error('GET /api/rsvp error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -69,7 +79,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { groupId?: string; members?: { id: string; rsvpStatus: string }[] };
+  let body: { groupId?: unknown; members?: unknown };
 
   try {
     body = await request.json();
@@ -79,43 +89,62 @@ export async function POST(request: NextRequest) {
 
   const { groupId, members } = body;
 
-  if (!groupId || typeof groupId !== 'string') {
-    return NextResponse.json({ error: 'groupId is required' }, { status: 400 });
+  if (!groupId || typeof groupId !== 'string' || !UUID_REGEX.test(groupId)) {
+    return NextResponse.json({ error: 'groupId must be a valid UUID' }, { status: 400 });
   }
 
-  try {
-    const group = await db
-      .select()
-      .from(guestGroups)
-      .where(eq(guestGroups.id, groupId))
-      .then((rows) => rows[0]);
+  if (!Array.isArray(members)) {
+    return NextResponse.json({ error: 'members must be an array' }, { status: 400 });
+  }
 
-    if (!group) {
-      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+  for (const member of members) {
+    if (
+      typeof member !== 'object' ||
+      member === null ||
+      typeof (member as Record<string, unknown>).id !== 'string' ||
+      !UUID_REGEX.test((member as Record<string, unknown>).id as string) ||
+      typeof (member as Record<string, unknown>).rsvpStatus !== 'string'
+    ) {
+      return NextResponse.json(
+        { error: 'Each member must have a valid id (UUID) and rsvpStatus string' },
+        { status: 400 }
+      );
     }
+  }
 
+  const validatedMembers = members as { id: string; rsvpStatus: string }[];
+
+  try {
+    // Query guests directly by groupId — no need for a separate group existence check
     const allGuests = await db
       .select()
       .from(guests)
       .where(eq(guests.groupId, groupId));
 
-    const submittedAt = new Date();
-    const memberMap = new Map((members ?? []).map((m) => [m.id, m.rsvpStatus]));
+    if (allGuests.length === 0) {
+      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    }
 
-    await Promise.all(
-      allGuests.map((guest) => {
-        const rawStatus = memberMap.get(guest.id) ?? 'not_attending';
-        const status: RsvpStatus = isValidRsvpStatus(rawStatus) ? rawStatus : 'not_attending';
-        return db
-          .update(guests)
-          .set({
-            rsvpStatus: status,
-            submittedAt,
-            updatedAt: submittedAt,
-          })
-          .where(eq(guests.id, guest.id));
-      })
-    );
+    const submittedAt = new Date();
+    const memberMap = new Map(validatedMembers.map((m) => [m.id, m.rsvpStatus]));
+
+    // Wrap all updates in a transaction so the group is never partially updated
+    await db.transaction(async (tx) => {
+      await Promise.all(
+        allGuests.map((guest) => {
+          const rawStatus = memberMap.get(guest.id) ?? 'not_attending';
+          const status: RsvpStatus = isValidRsvpStatus(rawStatus) ? rawStatus : 'not_attending';
+          return tx
+            .update(guests)
+            .set({
+              rsvpStatus: status,
+              submittedAt,
+              updatedAt: submittedAt,
+            })
+            .where(eq(guests.id, guest.id));
+        })
+      );
+    });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
