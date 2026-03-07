@@ -29,7 +29,7 @@ No test suite is currently configured. Validate changes by running `npm run buil
 - `src/components/HeroSection.tsx` – Hero with countdown; receives `daysToGo` prop from server component
 - `src/components/EventSection.tsx` – Reusable card for ceremony/reception; driven by `EventDetails` type
 - `src/components/TravelSection.tsx` – Hotel recommendation card; driven by `HotelDetails` type
-- `src/components/FAQSection.tsx` – Accordion FAQ list; reads from `src/constants/faqs.ts`
+- `src/components/FAQSection.tsx` – FAQ list section; reads from `src/constants/faqs.ts`
 - `src/components/Footer.tsx` – Site footer
 - `src/components/MobileNavLink.tsx` – Anchor/Link item for the mobile drawer
 - `src/components/dividers/` – Section divider wrappers (`GradientGlowDivider`, `SideLinesDivider`, `BottomGradientDivider`); each accepts an `id` prop used as the scroll anchor target
