@@ -4,16 +4,13 @@ import { FAQSection } from '@/components/FAQSection';
 import { Footer } from '@/components/Footer';
 import { EVENTS } from '@/constants/events';
 import { HOTELS } from '@/constants/hotels';
-import { DaysUntilWedding } from '@/utils/dateUtils';
 import { TravelSection } from '@/components/TravelSection';
 import { GradientGlowDivider, SideLinesDivider, BottomGradientDivider } from '@/components/dividers';
 
 const Home = () => {
-  const daysToGo = DaysUntilWedding();
-
   return (
     <div className='flex flex-col overflow-x-hidden'>
-      <HeroSection daysToGo={daysToGo} />
+      <HeroSection />
       <div className='bg-sage-50/70'>
         <GradientGlowDivider 
           id='Details' 

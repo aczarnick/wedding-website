@@ -1,12 +1,12 @@
+'use client';
+
 import Image from 'next/image';
 import { Header } from './Header';
 import handhold from '../../public/images/trees-handhold.jpg';
+import { DaysUntilWedding } from '@/utils/dateUtils';
 
-interface HeroSectionProps {
-  daysToGo: string;
-}
-
-export const HeroSection: React.FC<HeroSectionProps> = ({ daysToGo }) => {
+export const HeroSection: React.FC = () => {
+  const daysToGo = DaysUntilWedding();
   return (
     <div id='Home' className='min-h-screen relative'>
       <Image 
