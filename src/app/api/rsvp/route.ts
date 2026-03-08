@@ -5,11 +5,12 @@ import { eq, sql, and, inArray } from 'drizzle-orm';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const VALID_RSVP_STATUSES = ['pending', 'attending', 'not_attending'] as const;
-type RsvpStatus = (typeof VALID_RSVP_STATUSES)[number];
+// Only final attendance decisions are accepted in POST submissions
+const SUBMITTED_RSVP_STATUSES = ['attending', 'not_attending'] as const;
+type SubmittedRsvpStatus = (typeof SUBMITTED_RSVP_STATUSES)[number];
 
-function isValidRsvpStatus(value: string): value is RsvpStatus {
-  return VALID_RSVP_STATUSES.includes(value as RsvpStatus);
+function isSubmittedRsvpStatus(value: string): value is SubmittedRsvpStatus {
+  return SUBMITTED_RSVP_STATUSES.includes(value as SubmittedRsvpStatus);
 }
 
 export async function GET(request: NextRequest) {
@@ -108,16 +109,16 @@ export async function POST(request: NextRequest) {
       typeof id !== 'string' ||
       !UUID_REGEX.test(id) ||
       typeof rsvpStatus !== 'string' ||
-      !isValidRsvpStatus(rsvpStatus)
+      !isSubmittedRsvpStatus(rsvpStatus)
     ) {
       return NextResponse.json(
-        { error: 'Each member must have a valid id (UUID) and rsvpStatus value' },
+        { error: "Each member must have a valid id (UUID) and rsvpStatus of 'attending' or 'not_attending'" },
         { status: 400 }
       );
     }
   }
 
-  const validatedMembers = members as { id: string; rsvpStatus: RsvpStatus }[];
+  const validatedMembers = members as { id: string; rsvpStatus: SubmittedRsvpStatus }[];
 
   try {
     // Query guests directly by groupId — no need for a separate group existence check
@@ -137,8 +138,8 @@ export async function POST(request: NextRequest) {
     await db.transaction(async (tx) => {
       await Promise.all(
         allGuests.map((guest) => {
-          const rawStatus = memberMap.get(guest.id) ?? 'not_attending';
-          const status: RsvpStatus = isValidRsvpStatus(rawStatus) ? rawStatus : 'not_attending';
+          // Members not explicitly included default to 'not_attending'
+          const status: SubmittedRsvpStatus = memberMap.get(guest.id) ?? 'not_attending';
           return tx
             .update(guests)
             .set({
