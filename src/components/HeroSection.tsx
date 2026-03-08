@@ -1,12 +1,18 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Header } from './Header';
 import handhold from '../../public/images/trees-handhold.jpg';
 import { DaysUntilWedding } from '@/utils/dateUtils';
 
 export const HeroSection: React.FC = () => {
-  const daysToGo = DaysUntilWedding();
+  const [daysToGo, setDaysToGo] = useState<string>('\u00A0');
+
+  useEffect(() => {
+    setDaysToGo(DaysUntilWedding());
+  }, []);
+
   return (
     <div id='Home' className='min-h-screen relative'>
       <Image 
