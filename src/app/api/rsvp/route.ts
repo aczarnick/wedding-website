@@ -98,21 +98,26 @@ export async function POST(request: NextRequest) {
   }
 
   for (const member of members) {
+    const m = member as Record<string, unknown>;
+    const id = m?.id;
+    const rsvpStatus = m?.rsvpStatus;
+
     if (
       typeof member !== 'object' ||
       member === null ||
-      typeof (member as Record<string, unknown>).id !== 'string' ||
-      !UUID_REGEX.test((member as Record<string, unknown>).id as string) ||
-      typeof (member as Record<string, unknown>).rsvpStatus !== 'string'
+      typeof id !== 'string' ||
+      !UUID_REGEX.test(id) ||
+      typeof rsvpStatus !== 'string' ||
+      !isValidRsvpStatus(rsvpStatus)
     ) {
       return NextResponse.json(
-        { error: 'Each member must have a valid id (UUID) and rsvpStatus string' },
+        { error: 'Each member must have a valid id (UUID) and rsvpStatus value' },
         { status: 400 }
       );
     }
   }
 
-  const validatedMembers = members as { id: string; rsvpStatus: string }[];
+  const validatedMembers = members as { id: string; rsvpStatus: RsvpStatus }[];
 
   try {
     // Query guests directly by groupId — no need for a separate group existence check
