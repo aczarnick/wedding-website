@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { FAQS } from '@/constants/faqs';
 
 export const FAQSection: React.FC = () => {
@@ -10,6 +11,11 @@ export const FAQSection: React.FC = () => {
           <div key={index}>
             <p className="font-semibold text-sage-800">Q: {faq.question}</p>
             <p className="mt-2">A: {faq.answer}</p>
+            {faq.link && (
+              <Link className="mt-2 inline-block underline text-sage-800 hover:text-sage-700" href={faq.link.href}>
+                {faq.link.label}
+              </Link>
+            )}
           </div>
         ))}
       </div>

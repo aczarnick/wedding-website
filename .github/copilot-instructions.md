@@ -20,7 +20,7 @@ No test suite is currently configured. Validate changes by running `npm run buil
 **Pages (Next.js App Router):**
 - `/` → `src/app/page.tsx` – Main landing page (server component); renders hero, details, travel, FAQs, and footer
 - `/gallery` → `src/app/gallery/page.tsx` – Gallery page (coming soon placeholder)
-- `/registry` → `src/app/registry/page.tsx` – Registry page (coming soon placeholder)
+- `/registry` → `src/app/registry/page.tsx` – Redirects to The Knot registry (`REGISTRY_URL` in `src/constants/registry.ts`)
 
 **Key Files & Directories:**
 - `src/app/layout.tsx` – Root layout; metadata, Playfair Display font variable, global CSS import
@@ -36,6 +36,7 @@ No test suite is currently configured. Validate changes by running `npm run buil
 - `src/constants/events.ts` – `EVENTS` record (`ceremony`, `reception`) and `NAV_LINKS` array
 - `src/constants/faqs.ts` – `FAQS` data array
 - `src/constants/hotels.ts` – `HOTELS` record (`cobblestone`, `baymont`)
+- `src/constants/registry.ts` – `REGISTRY_URL` (The Knot registry link)
 - `src/utils/dateUtils.ts` – `DaysUntilWedding()` function (returns a formatted string)
 - `public/images/` – Static images: `trees-handhold.jpg`, `ring-shot.jpg`, `lift-bar.jpg`
 - `next.config.ts` – `output: 'standalone'` for containerization
@@ -70,7 +71,7 @@ src/
     page.tsx            # Main landing page (server component)
     globals.css         # Tailwind v4 + sage color theme
     gallery/page.tsx    # Gallery placeholder page
-    registry/page.tsx   # Registry placeholder page
+    registry/page.tsx   # Redirects to The Knot registry
   components/
     Header.tsx          # Sticky nav + mobile drawer
     HeroSection.tsx     # Hero with countdown
@@ -88,6 +89,7 @@ src/
     events.ts           # EVENTS record + NAV_LINKS
     faqs.ts             # FAQS array
     hotels.ts           # HOTELS record
+    registry.ts         # REGISTRY_URL (The Knot)
   utils/
     dateUtils.ts        # DaysUntilWedding()
 public/
@@ -104,7 +106,7 @@ public/
 - **No backend API:** Next.js app with server components and static data in `src/constants/*`
 - **Standalone output:** `next.config.ts` sets `output: 'standalone'`; Docker support via `Dockerfile` and `docker-compose.yml`
 - **Wedding date:** October 10, 2026 — hardcoded in `src/utils/dateUtils.ts`
-- **Gallery & Registry pages** are "Coming Soon" placeholders; `NAV_LINKS` already includes them
+- **Gallery page** is a "Coming Soon" placeholder; **Registry page** redirects to The Knot. `NAV_LINKS` includes both
 
 ## Development Tips
 
