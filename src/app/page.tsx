@@ -16,7 +16,6 @@ const Home = () => {
           id='Details' 
           glowPosition="center"
         >
-          <p className="text-center text-sm uppercase tracking-[0.3em] text-sage-700/70 pt-12">October 10, 2026</p>
           <EventSection {...EVENTS.ceremony} />
           <EventSection {...EVENTS.reception} />
         </GradientGlowDivider>

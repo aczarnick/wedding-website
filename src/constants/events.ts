@@ -4,6 +4,7 @@ import { StaticImageData } from "next/dist/shared/lib/image-external";
 
 export interface EventDetails {
   title: string;
+  date: string;
   time: string;
   address: string;
   mapLink: string;
@@ -16,6 +17,7 @@ export interface EventDetails {
 export const EVENTS: Record<string, EventDetails> = {
   ceremony: {
     title: "Ceremony",
+    date: "October 10, 2026",
     time: "4:30\u00A0PM",
     address: "1815 260th St Boone, IA 50036",
     mapLink: "https://maps.app.goo.gl/oStkJhh8UEmdLwWG8",
@@ -25,6 +27,7 @@ export const EVENTS: Record<string, EventDetails> = {
   },
   reception: {
     title: "Reception",
+    date: "October 10, 2026",
     time: "6:00\u00A0PM",
     address: "1815 260th St Boone, IA 50036",
     mapLink: "https://maps.app.goo.gl/oStkJhh8UEmdLwWG8",

@@ -10,6 +10,7 @@ interface EventSectionProps extends EventDetails {
 
 export const EventSection: React.FC<EventSectionProps> = ({
   title,
+  date,
   time,
   address,
   mapLink,
@@ -29,7 +30,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
           alt={imageAlt}
           className="mt-10 shadow-lg/70 rounded-2xl"
         />
-        <p className="text-lg mt-6 text-sage-800">{time}</p>
+        <p className="text-lg mt-6 text-sage-800">{date} · {time}</p>
         <p className="text-base text-sage-700">{address}</p>
         <a className="text-base underline text-sage-700 hover:text-sage-800" href={mapLink}>
           Map
@@ -50,7 +51,7 @@ export const EventSection: React.FC<EventSectionProps> = ({
         <div className="text-center basis-1/2">
           <p className="text-5xl text-sage-800">{title}</p>
           <p className="text-xs uppercase tracking-[0.45em] text-sage-700/70 mt-4">{subtitle}</p>
-          <p className="text-lg mt-6 text-sage-800">{time}</p>
+          <p className="text-lg mt-6 text-sage-800">{date} · {time}</p>
           <p className="text-base text-sage-700">{address}</p>
           <a className="text-base underline text-sage-700 hover:text-sage-800" href={mapLink}>
             Map
