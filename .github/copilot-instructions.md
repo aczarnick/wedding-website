@@ -26,7 +26,7 @@ No test suite is currently configured. Validate changes by running `npm run buil
 - `src/app/layout.tsx` – Root layout; metadata, Playfair Display font variable, global CSS import
 - `src/app/globals.css` – Tailwind CSS v4 import + `@theme inline` block defining the sage color palette and font variable
 - `src/components/Header.tsx` – Sticky nav bar with mobile drawer (`'use client'`); reads `NAV_LINKS` from constants
-- `src/components/HeroSection.tsx` – Hero with countdown; receives `daysToGo` prop from server component
+- `src/components/HeroSection.tsx` – Hero with countdown (`'use client'`); computes `daysToGo` client-side in a `useEffect`
 - `src/components/EventSection.tsx` – Reusable card for ceremony/reception; driven by `EventDetails` type
 - `src/components/TravelSection.tsx` – Hotel recommendation card; driven by `HotelDetails` type
 - `src/components/FAQSection.tsx` – FAQ list section; reads from `src/constants/faqs.ts`
@@ -49,8 +49,9 @@ No test suite is currently configured. Validate changes by running `npm run buil
 - **Responsive:** Mobile-first; `md:` breakpoint for desktop nav visibility (`hidden md:contents` / `md:hidden`)
 
 ### Component & Data Patterns
-- **`'use client'` directive:** Only on components that use React state/hooks (e.g., `Header.tsx`)
-- **`page.tsx` is a server component** – no `'use client'`; calls `DaysUntilWedding()` directly
+- **`'use client'` directive:** Only on components that use React state/hooks (`Header.tsx`, `HeroSection.tsx`)
+- **`page.tsx` is a server component** – no `'use client'`
+- **Countdown:** `DaysUntilWedding()` is deliberately called client-side in a `useEffect` inside `HeroSection` (initial state is a non-breaking space) to avoid hydration mismatches and a stale build-time value; do not move it to the server or call it during render
 - **Module path alias:** `@/` resolves to `src/` (e.g., `import { Header } from '@/components/Header'`)
 - **Images:** Always use Next.js `Image` component with `alt` text; use `StaticImageData` imports for local images in constants
 - **Navigation:** `NAV_LINKS` in `src/constants/events.ts` drives both desktop and mobile nav. `Registry` and `Gallery` route to `/registry` and `/gallery`; all others use `/#SectionId` hash links matching divider `id` props
