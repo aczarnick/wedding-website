@@ -16,6 +16,7 @@ const Home = () => {
           id='Details' 
           glowPosition="center"
         >
+          <p className="text-center text-sm uppercase tracking-[0.3em] text-sage-700/70 pt-12">October 10, 2026</p>
           <EventSection {...EVENTS.ceremony} />
           <EventSection {...EVENTS.reception} />
         </GradientGlowDivider>
@@ -31,7 +32,7 @@ const Home = () => {
             <TravelSection {...HOTELS.cobblestone} />
             <TravelSection {...HOTELS.baymont} />
           </div>
-          <p className="text-lg text-center pb-10 text-sage-700">Issues with booking? Let us know!</p>
+          <p className="text-lg text-center pb-10 text-sage-700">Issues with booking? Text us!</p>
         </SideLinesDivider>
 
         <BottomGradientDivider 

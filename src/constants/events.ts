@@ -21,7 +21,7 @@ export const EVENTS: Record<string, EventDetails> = {
     mapLink: "https://maps.app.goo.gl/oStkJhh8UEmdLwWG8",
     image: ringShot,
     imageAlt: "Close up of engagement ring",
-    subtitle: "Fun Begins",
+    subtitle: "The Main Event",
   },
   reception: {
     title: "Reception",

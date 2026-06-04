@@ -10,6 +10,9 @@ export const HeroSection: React.FC = () => {
   const [daysToGo, setDaysToGo] = useState<string>('\u00A0');
 
   useEffect(() => {
+    // Deliberately set in an effect: the countdown must be computed client-side
+    // after hydration to avoid both a hydration mismatch and a stale build-time value.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDaysToGo(DaysUntilWedding());
   }, []);
 
