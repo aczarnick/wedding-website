@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars (gitignored) or supply via -var / TF_VAR_* in CI.
+tfstate_storage_account_name = "czwtfstate0001"
+alert_emails                 = ["aczarnick@example.com"]
+budget_start_date            = "2026-08-01T00:00:00Z"
+# Origin lock (allowed_ip_ranges) is set via the ALLOWED_IP_RANGES_JSON GitHub
+# repo variable, NOT here — a local tfvars override would be reverted by the
+# pipeline. See docs/deployment/README.md.

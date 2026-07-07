@@ -1,0 +1,100 @@
+name: Deploy env (reusable)
+
+# Deploys one image to one Container App, then blocks until the new revision is
+# provisioned and the site serves the expected content. Rollback = re-run the
+# Deploy workflow (workflow_dispatch) with a previous image ref.
+on:
+  workflow_call:
+    inputs:
+      resource_group:
+        required: true
+        type: string
+      app_name:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
+      environment_name:
+        description: GitHub Environment gating this deploy (empty = no gate)
+        required: false
+        type: string
+        default: ""
+      smoke_host:
+        description: Public hostname to smoke test through Cloudflare (e.g. czarnickwedding.com). Empty = hit the default ACA FQDN directly (pre-DNS / pre-origin-lock bring-up).
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: ${{ inputs.app_name }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_name }}
+    concurrency:
+      group: deploy-${{ inputs.app_name }}
+      cancel-in-progress: false
+    env:
+      SMOKE_STRING: "October 10, 2026"
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Assert app exists
+        run: |
+          az containerapp show -g "${{ inputs.resource_group }}" -n "${{ inputs.app_name }}" -o none \
+            || { echo "::error::Container App ${{ inputs.app_name }} not found — run the Infra workflow first."; exit 1; }
+
+      - name: Deploy image
+        run: az containerapp update -g "${{ inputs.resource_group }}" -n "${{ inputs.app_name }}" --image "${{ inputs.image }}" -o none
+
+      - name: Wait for revision + smoke test
+        run: |
+          set -euo pipefail
+          RG="${{ inputs.resource_group }}"
+          APP="${{ inputs.app_name }}"
+
+          echo "Waiting for latest revision to be provisioned..."
+          PROVISIONED=false
+          for i in $(seq 1 40); do
+            LATEST=$(az containerapp show -g "$RG" -n "$APP" --query properties.latestRevisionName -o tsv)
+            STATE=$(az containerapp revision show -g "$RG" -n "$APP" --revision "$LATEST" --query properties.provisioningState -o tsv 2>/dev/null || echo "Pending")
+            echo "  $LATEST: $STATE"
+            if [ "$STATE" = "Provisioned" ]; then PROVISIONED=true; break; fi
+            [ "$STATE" = "Failed" ] && { echo "::error::Revision $LATEST failed to provision"; exit 1; }
+            sleep 6
+          done
+          if [ "$PROVISIONED" != "true" ]; then
+            echo "::error::Revision $LATEST never reached Provisioned — aborting before smoke test"
+            exit 1
+          fi
+
+          # After the origin is IP-locked to Cloudflare, GitHub runners can't reach
+          # the default ACA FQDN — smoke through the public host instead. Cloudflare
+          # does not cache HTML by default, so this still exercises the origin.
+          HOST="${{ inputs.smoke_host }}"
+          if [ -n "$HOST" ]; then
+            TARGET="https://$HOST/"
+          else
+            FQDN=$(az containerapp show -g "$RG" -n "$APP" --query properties.configuration.ingress.fqdn -o tsv)
+            TARGET="https://$FQDN/"
+          fi
+
+          echo "Smoke testing $TARGET (allows for scale-from-zero cold start)..."
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 20 "$TARGET" | grep -qF "$SMOKE_STRING"; then
+              echo "Smoke test passed."
+              exit 0
+            fi
+            echo "  attempt $i: not ready, retrying"
+            sleep 6
+          done
+          echo "::error::Smoke test failed — '$SMOKE_STRING' not served by $TARGET"
+          exit 1

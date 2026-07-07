@@ -1,0 +1,27 @@
+name: ACR purge
+
+# Keeps the Basic registry from filling with stale image tags. Runs monthly;
+# uses the infra identity (Contributor on rg-czw-shared can run ACR tasks).
+on:
+  schedule:
+    - cron: "0 4 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_INFRA_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Purge old images (keep 10 most recent, delete untagged)
+        run: |
+          az acr run --registry "${{ vars.ACR_NAME }}" \
+            --cmd "acr purge --filter 'web:.*' --keep 10 --ago 30d --untagged" \
+            /dev/null

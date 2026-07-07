@@ -1,0 +1,38 @@
+name: Infra
+
+# Applies Terraform in order: shared -> staging -> production.
+# shared and production require approval (their GitHub Environments); staging is
+# automatic. Path-filtered so it does not race deploy.yml on app-only changes.
+on:
+  push:
+    branches: [master]
+    paths:
+      - infra/terraform/**
+      - .github/workflows/infra.yml
+      - .github/workflows/_terraform-env.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  shared:
+    uses: ./.github/workflows/_terraform-env.yml
+    with:
+      env_dir: shared
+      environment_name: infra
+
+  staging:
+    needs: shared
+    uses: ./.github/workflows/_terraform-env.yml
+    with:
+      env_dir: staging
+      environment_name: ""
+
+  production:
+    needs: staging
+    uses: ./.github/workflows/_terraform-env.yml
+    with:
+      env_dir: production
+      environment_name: production
