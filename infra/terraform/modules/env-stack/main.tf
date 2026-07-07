@@ -7,7 +7,7 @@ data "azurerm_resource_group" "env" {
 # database (a Consumption-only env cannot add those later).
 resource "azurerm_container_app_environment" "this" {
   name                       = "cae-czw-${var.environment}"
-  location                   = data.azurerm_resource_group.env.location
+  location                   = var.location != "" ? var.location : data.azurerm_resource_group.env.location
   resource_group_name        = data.azurerm_resource_group.env.name
   log_analytics_workspace_id = var.log_analytics_workspace_id
 

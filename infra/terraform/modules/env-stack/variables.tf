@@ -8,6 +8,12 @@ variable "resource_group_name" {
   description = "Pre-existing (bootstrap-created) resource group for this environment."
 }
 
+variable "location" {
+  type        = string
+  description = "Region for the Container App Environment. Empty = same region as the resource group. Set staging and production to different regions to satisfy the free-trial limit of 1 environment per region."
+  default     = ""
+}
+
 variable "log_analytics_workspace_id" {
   type        = string
   description = "Shared Log Analytics workspace ID (from the shared stack)."

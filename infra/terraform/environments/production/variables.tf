@@ -9,6 +9,12 @@ variable "resource_group_name" {
   default     = "rg-czw-production"
 }
 
+variable "location" {
+  type        = string
+  description = "Region for the production Container App Environment. Differs from staging (Central US) because free-trial subscriptions allow only 1 environment per region."
+  default     = "eastus"
+}
+
 variable "min_replicas" {
   type        = number
   description = "Minimum replicas. 0 = cheapest (guests may hit a cold start); set default to 1 here to keep prod warm (~$3-14/mo)."
