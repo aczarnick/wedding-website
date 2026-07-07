@@ -1,0 +1,56 @@
+name: Terraform env (reusable)
+
+# Runs plan + apply for a single environment in one job. Plan and apply happen
+# atomically on the same commit, so the applied plan always equals the plan just
+# generated (no plan/apply drift). When environment_name is set, the GitHub
+# Environment's approval gate blocks the whole job until a reviewer approves.
+on:
+  workflow_call:
+    inputs:
+      env_dir:
+        description: Directory under infra/terraform/environments
+        required: true
+        type: string
+      environment_name:
+        description: GitHub Environment gating apply (empty = no gate)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  apply:
+    name: ${{ inputs.env_dir }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_name }}
+    concurrency:
+      group: infra-${{ inputs.env_dir }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: infra/terraform/environments/${{ inputs.env_dir }}
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_INFRA_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # Complex-typed TF vars must be valid HCL/JSON, e.g. ALERT_EMAILS_JSON = ["a@b.com"].
+      TF_VAR_tfstate_storage_account_name: ${{ vars.TFSTATE_STORAGE_ACCOUNT }}
+      TF_VAR_acr_name: ${{ vars.ACR_NAME }}
+      TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS_JSON }}
+      TF_VAR_budget_start_date: ${{ vars.BUDGET_START_DATE }}
+      # Origin lock lives in a repo variable, not a gitignored tfvars, so the
+      # pipeline never reverts it. Defaults to [] (open) until you set it.
+      TF_VAR_allowed_ip_ranges: ${{ vars.ALLOWED_IP_RANGES_JSON || '[]' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Init
+        run: terraform init -input=false -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}"
+      - name: Plan
+        run: terraform plan -input=false -lock-timeout=180s -out=tfplan
+      - name: Apply
+        run: terraform apply -input=false -lock-timeout=180s tfplan

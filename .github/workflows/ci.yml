@@ -1,0 +1,50 @@
+name: CI
+
+# Pull requests get NO cloud credentials by design: this kills the "pwn request"
+# vector where a PR could run arbitrary code against an Azure-authenticated job.
+# Real terraform plan/apply and image deploys happen only on push to master
+# (infra.yml / deploy.yml).
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: App — lint, build, docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - name: Docker build (no push)
+        run: docker build -t czw:ci .
+
+  infra:
+    name: Terraform — fmt, validate, actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: terraform fmt
+        run: terraform fmt -check -recursive infra/terraform
+      - name: terraform validate
+        run: |
+          set -euo pipefail
+          for env in shared staging production; do
+            echo "== validate $env =="
+            terraform -chdir="infra/terraform/environments/$env" init -backend=false -input=false
+            terraform -chdir="infra/terraform/environments/$env" validate
+          done
+      - name: actionlint
+        uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color

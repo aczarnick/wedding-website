@@ -1,0 +1,82 @@
+name: Deploy
+
+# Build once, promote the SAME image digest staging -> production.
+# staging deploys automatically; production requires approval (its GitHub
+# Environment). Manual dispatch with an `image` input skips the build and
+# redeploys that exact ref — this is the rollback path.
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - infra/terraform/**
+      - docs/**
+      - "**.md"
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image ref to (re)deploy, e.g. <acr>.azurecr.io/web@sha256:... . Blank = build HEAD."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+# Serialize whole Deploy runs so a slower older run can't land a stale image
+# after a newer one. Never cancel an in-flight deploy.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & push
+    if: ${{ github.event.inputs.image == '' }}
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.push.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Build & push image
+        id: push
+        env:
+          ACR_NAME: ${{ vars.ACR_NAME }}
+        run: |
+          set -euo pipefail
+          az acr login --name "$ACR_NAME"
+          # Deterministic login server — avoids `az acr show` (an ARM read the
+          # deploy identity's AcrPush role does not grant).
+          LOGIN_SERVER="${ACR_NAME}.azurecr.io"
+          SHA="${GITHUB_SHA::12}"
+          docker build -t "$LOGIN_SERVER/web:$SHA" -t "$LOGIN_SERVER/web:latest" .
+          docker push "$LOGIN_SERVER/web:$SHA"
+          docker push "$LOGIN_SERVER/web:latest"
+          DIGEST=$(az acr repository show --name "$ACR_NAME" --image "web:$SHA" --query digest -o tsv)
+          echo "image=$LOGIN_SERVER/web@$DIGEST" >> "$GITHUB_OUTPUT"
+
+  staging:
+    needs: build
+    if: ${{ always() && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    uses: ./.github/workflows/_deploy-env.yml
+    with:
+      resource_group: rg-czw-staging
+      app_name: ca-czw-staging
+      image: ${{ github.event.inputs.image || needs.build.outputs.image }}
+      environment_name: ""
+      smoke_host: ${{ vars.STAGING_SMOKE_HOST }}
+
+  production:
+    needs: [build, staging]
+    if: ${{ always() && needs.staging.result == 'success' }}
+    uses: ./.github/workflows/_deploy-env.yml
+    with:
+      resource_group: rg-czw-production
+      app_name: ca-czw-production
+      image: ${{ github.event.inputs.image || needs.build.outputs.image }}
+      environment_name: production
+      smoke_host: ${{ vars.PRODUCTION_SMOKE_HOST }}
