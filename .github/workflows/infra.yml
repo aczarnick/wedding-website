@@ -8,8 +8,9 @@ on:
     branches: [master]
     paths:
       - infra/terraform/**
-      - .github/workflows/infra.yml
-      - .github/workflows/_terraform-env.yml
+  # Only real Terraform changes auto-apply. Changes to the workflow files
+  # themselves (e.g. Dependabot action bumps) do NOT trigger an apply — run it
+  # manually if you change the pipeline logic.
   workflow_dispatch:
 
 permissions:
@@ -19,6 +20,7 @@ permissions:
 jobs:
   shared:
     uses: ./.github/workflows/_terraform-env.yml
+    secrets: inherit
     with:
       env_dir: shared
       environment_name: infra
@@ -26,6 +28,7 @@ jobs:
   staging:
     needs: shared
     uses: ./.github/workflows/_terraform-env.yml
+    secrets: inherit
     with:
       env_dir: staging
       environment_name: ""
@@ -33,6 +36,7 @@ jobs:
   production:
     needs: staging
     uses: ./.github/workflows/_terraform-env.yml
+    secrets: inherit
     with:
       env_dir: production
       environment_name: production

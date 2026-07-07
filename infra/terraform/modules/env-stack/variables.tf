@@ -45,6 +45,7 @@ variable "allowed_ip_ranges" {
 variable "alert_emails" {
   type        = list(string)
   description = "Budget alert recipients."
+  sensitive   = true
 }
 
 variable "monthly_budget_amount" {

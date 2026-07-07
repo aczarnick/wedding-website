@@ -60,8 +60,11 @@ CURRENT_USER_OID=$(az ad signed-in-user show --query id -o tsv)
 echo "==> Register resource providers (async; finishes in the background before apply)"
 # Not --wait: registration continues server-side and completes long before the
 # first `terraform apply` needs Microsoft.App etc. Re-running is a fast no-op.
+# Terraform no longer self-registers providers (resource_provider_registrations
+# = "none"), so every namespace it touches must be registered here.
 for ns in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry \
-          Microsoft.Insights Microsoft.ManagedIdentity Microsoft.Storage; do
+          Microsoft.Insights Microsoft.ManagedIdentity Microsoft.Storage \
+          Microsoft.Consumption Microsoft.Authorization; do
   az provider register --namespace "$ns" --only-show-errors -o none
 done
 
@@ -193,8 +196,10 @@ gh_var AZURE_INFRA_CLIENT_ID "$INFRA_CLIENT_ID"
 gh_var AZURE_DEPLOY_CLIENT_ID "$DEPLOY_CLIENT_ID"
 gh_var TFSTATE_STORAGE_ACCOUNT "$TFSTATE_SA"
 gh_var ACR_NAME              "$ACR_NAME"
-gh_var ALERT_EMAILS_JSON     "[\"${ALERT_EMAIL}\"]"
 gh_var BUDGET_START_DATE     "$BUDGET_START_DATE"
+# Alert email is PII -> a masked secret, not a variable. Remove any prior variable.
+gh variable delete ALERT_EMAILS_JSON -R "$GITHUB_REPO" 2>/dev/null || true
+gh secret set ALERT_EMAILS_JSON -R "$GITHUB_REPO" -b "[\"${ALERT_EMAIL}\"]"
 
 echo "==> GitHub Environments"
 # Create the environments; production is locked to the master branch. Required

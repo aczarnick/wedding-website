@@ -40,7 +40,8 @@ jobs:
       # Complex-typed TF vars must be valid HCL/JSON, e.g. ALERT_EMAILS_JSON = ["a@b.com"].
       TF_VAR_tfstate_storage_account_name: ${{ vars.TFSTATE_STORAGE_ACCOUNT }}
       TF_VAR_acr_name: ${{ vars.ACR_NAME }}
-      TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS_JSON }}
+      # A secret (not a var) so GitHub masks the email in logs, incl. error paths.
+      TF_VAR_alert_emails: ${{ secrets.ALERT_EMAILS_JSON }}
       TF_VAR_budget_start_date: ${{ vars.BUDGET_START_DATE }}
       # Origin lock lives in a repo variable, not a gitignored tfvars, so the
       # pipeline never reverts it. Defaults to [] (open) until you set it.
