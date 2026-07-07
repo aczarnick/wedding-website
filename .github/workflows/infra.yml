@@ -19,6 +19,7 @@ permissions:
 jobs:
   shared:
     uses: ./.github/workflows/_terraform-env.yml
+    secrets: inherit
     with:
       env_dir: shared
       environment_name: infra
@@ -26,6 +27,7 @@ jobs:
   staging:
     needs: shared
     uses: ./.github/workflows/_terraform-env.yml
+    secrets: inherit
     with:
       env_dir: staging
       environment_name: ""
@@ -33,6 +35,7 @@ jobs:
   production:
     needs: staging
     uses: ./.github/workflows/_terraform-env.yml
+    secrets: inherit
     with:
       env_dir: production
       environment_name: production

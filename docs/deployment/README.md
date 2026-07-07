@@ -44,8 +44,10 @@ ALERT_EMAIL="you@example.com" ./scripts/bootstrap-azure.sh
 
 This creates the resource groups, the AAD-locked state storage, the two GitHub
 OIDC identities (with federated credentials matching each job's environment
-context), least-privilege RBAC, the subscription budget, and all GitHub repo
-variables + environments.
+context), least-privilege RBAC, the required resource-provider registrations,
+and the GitHub repo variables + environments. The alert email is stored as a
+GitHub **secret** (`ALERT_EMAILS_JSON`), not a variable, so GitHub masks it in
+Actions logs.
 
 Then, by hand:
 
@@ -107,7 +109,9 @@ values from Terraform outputs:
 
 ```bash
 cd infra/terraform/environments/production   # or staging
-terraform output      # default_fqdn, custom_domain_verification_id, environment_static_ip
+terraform output custom_domain_verification_id
+terraform output -raw default_fqdn            # sensitive (origin) — -raw to reveal
+terraform output -raw environment_static_ip   # sensitive (origin) — -raw to reveal
 ```
 
 1. **Cloudflare DNS — start DNS-only (grey cloud)** so ACA can validate cleanly:

@@ -24,6 +24,7 @@ variable "log_analytics_daily_quota_gb" {
 variable "alert_emails" {
   type        = list(string)
   description = "Emails that receive budget alerts."
+  sensitive   = true # keep PII out of public terraform plan/apply logs
 }
 
 variable "monthly_budget_amount" {
