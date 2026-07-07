@@ -11,7 +11,8 @@ output "default_fqdn" {
 
 output "custom_domain_verification_id" {
   value       = module.stack.custom_domain_verification_id
-  description = "Value for the asuid.<host> TXT record."
+  description = "Value for the asuid.<host> TXT record. Retrieve with: terraform output -raw custom_domain_verification_id"
+  sensitive   = true # azurerm marks this attribute sensitive; root output must match
 }
 
 output "environment_static_ip" {

@@ -109,7 +109,7 @@ values from Terraform outputs:
 
 ```bash
 cd infra/terraform/environments/production   # or staging
-terraform output custom_domain_verification_id
+terraform output -raw custom_domain_verification_id
 terraform output -raw default_fqdn            # sensitive (origin) — -raw to reveal
 terraform output -raw environment_static_ip   # sensitive (origin) — -raw to reveal
 ```
