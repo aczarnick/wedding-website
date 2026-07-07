@@ -54,12 +54,21 @@ Then, by hand:
 1. **GitHub → Settings → Environments**: add yourself as a **required reviewer**
    on `infra` and `production`. Confirm `production` is limited to the `master`
    branch.
-2. **Keep the Free Trial spending limit ON.** Do **not** "upgrade to
-   pay-as-you-go" until you have to. While it is on, Azure de-allocates services
-   when the $200 credit is exhausted and **cannot bill you beyond it** — this,
-   not the budgets, is your hard cap. (Budgets only email alerts. After the
-   credit/30-day window the subscription pauses until you upgrade; once upgraded,
-   only the alerts remain.)
+2. **Cost control on pay-as-you-go.** This subscription runs on PAYG (the
+   free-trial $200 spending limit — which was a hard cap — no longer applies;
+   PAYG is required because free-trial subscriptions allow only one Container App
+   Environment). There is **no hard spend cap on PAYG**; spend is bounded instead
+   by:
+   - **Structural caps (the real guard):** apps scale to zero (`min_replicas=0`),
+     `max_replicas` capped (staging 1, prod 2 × 0.25 vCPU → compute ~$30/mo worst
+     case), ACR Basic, Log Analytics `daily_quota_gb=1`, no premium resources,
+     Cloudflare caching in front.
+   - **Alerting:** a subscription-wide budget emails at 50/75/90/100% (actual +
+     forecasted), plus per-RG budgets. Alerts only — nothing is auto-shut-down
+     (the site stays reachable for guests).
+   - **Manual kill switch** if a bill ever surprises you:
+     `az containerapp ingress disable -g <rg> -n <app>` (parks the app at $0), or
+     scale the whole thing down / delete the RG.
 
 ## Provision infrastructure
 

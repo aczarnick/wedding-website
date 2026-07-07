@@ -157,6 +157,9 @@ assign "$INFRA_PRINCIPAL_ID" "Storage Blob Data Contributor" "$SA_ID"
 # shared RG (the only stack that assigns a role).
 INFRA_SHARED_RG_ID=$(az group show -n "$RG_SHARED" --query id -o tsv)
 assign "$INFRA_PRINCIPAL_ID" "User Access Administrator" "$INFRA_SHARED_RG_ID"
+# The shared stack also creates a subscription-wide budget, which needs
+# cost-management write at subscription scope (Contributor on RGs is not enough).
+assign "$INFRA_PRINCIPAL_ID" "Cost Management Contributor" "$SUB_SCOPE"
 
 # Deploy identity: least-privilege custom role for `az containerapp update` +
 # AcrPush on the registry. (Falls back automatically to no-op if role exists.)
