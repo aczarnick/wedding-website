@@ -8,8 +8,9 @@ on:
     branches: [master]
     paths:
       - infra/terraform/**
-      - .github/workflows/infra.yml
-      - .github/workflows/_terraform-env.yml
+  # Only real Terraform changes auto-apply. Changes to the workflow files
+  # themselves (e.g. Dependabot action bumps) do NOT trigger an apply — run it
+  # manually if you change the pipeline logic.
   workflow_dispatch:
 
 permissions:

@@ -11,6 +11,8 @@ on:
       - infra/terraform/**
       - docs/**
       - "**.md"
+      - .github/**
+      - scripts/**
   workflow_dispatch:
     inputs:
       image:
