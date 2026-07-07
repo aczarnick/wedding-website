@@ -152,6 +152,11 @@ for rg in "$RG_SHARED" "$RG_STAGING" "$RG_PRODUCTION"; do
   assign "$INFRA_PRINCIPAL_ID" "Cost Management Contributor" "$RG_ID"
 done
 assign "$INFRA_PRINCIPAL_ID" "Storage Blob Data Contributor" "$SA_ID"
+# The shared stack creates the AcrPull role assignment, which needs
+# roleAssignments/write — NOT included in Contributor. Grant it only on the
+# shared RG (the only stack that assigns a role).
+INFRA_SHARED_RG_ID=$(az group show -n "$RG_SHARED" --query id -o tsv)
+assign "$INFRA_PRINCIPAL_ID" "User Access Administrator" "$INFRA_SHARED_RG_ID"
 
 # Deploy identity: least-privilege custom role for `az containerapp update` +
 # AcrPush on the registry. (Falls back automatically to no-op if role exists.)
