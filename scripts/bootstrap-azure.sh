@@ -56,10 +56,12 @@ az account set --subscription "$SUBSCRIPTION_ID"
 TENANT_ID=$(az account show --query tenantId -o tsv)
 CURRENT_USER_OID=$(az ad signed-in-user show --query id -o tsv)
 
-echo "==> Register resource providers (not auto-registered on fresh subscriptions)"
+echo "==> Register resource providers (async; finishes in the background before apply)"
+# Not --wait: registration continues server-side and completes long before the
+# first `terraform apply` needs Microsoft.App etc. Re-running is a fast no-op.
 for ns in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry \
           Microsoft.Insights Microsoft.ManagedIdentity Microsoft.Storage; do
-  az provider register --namespace "$ns" --wait --only-show-errors
+  az provider register --namespace "$ns" --only-show-errors -o none
 done
 
 echo "==> Resource groups"
