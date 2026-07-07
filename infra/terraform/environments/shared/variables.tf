@@ -33,6 +33,12 @@ variable "monthly_budget_amount" {
   default     = 15
 }
 
+variable "subscription_budget_amount" {
+  type        = number
+  description = "Subscription-wide monthly budget (USD). Alert-only safety net (aggressive thresholds)."
+  default     = 50
+}
+
 variable "budget_start_date" {
   type        = string
   description = "Budget start, first day of a month in RFC3339 UTC, e.g. 2026-08-01T00:00:00Z."

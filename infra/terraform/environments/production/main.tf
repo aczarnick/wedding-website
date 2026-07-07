@@ -14,7 +14,6 @@ module "stack" {
 
   environment                = "production"
   resource_group_name        = var.resource_group_name
-  location                   = var.location
   log_analytics_workspace_id = data.terraform_remote_state.shared.outputs.log_analytics_workspace_id
   acr_login_server           = data.terraform_remote_state.shared.outputs.acr_login_server
   acr_pull_identity_id       = data.terraform_remote_state.shared.outputs.acr_pull_identity_id
