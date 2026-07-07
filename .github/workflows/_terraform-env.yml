@@ -47,7 +47,7 @@ jobs:
       TF_VAR_allowed_ip_ranges: ${{ vars.ALLOWED_IP_RANGES_JSON || '[]' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
       - name: Init
         run: terraform init -input=false -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}"
       - name: Plan
