@@ -21,7 +21,8 @@ set -euo pipefail
 SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-$(az account show --query id -o tsv)}"
 LOCATION="${LOCATION:-centralus}"
 GITHUB_REPO="${GITHUB_REPO:-aczarnick/wedding-website}"
-ALERT_EMAIL="${ALERT_EMAIL:-you@example.com}"
+# Required: pass ALERT_EMAIL=you@example.com when running (budget alert recipient).
+ALERT_EMAIL="${ALERT_EMAIL:?set ALERT_EMAIL=you@example.com}"
 # Budget start must be the first day of a month, RFC3339 UTC:
 BUDGET_START_DATE="${BUDGET_START_DATE:-2026-08-01T00:00:00Z}"
 # Names are reused across re-runs so the script is idempotent: an explicit env
