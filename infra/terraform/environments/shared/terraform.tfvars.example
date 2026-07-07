@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars (gitignored) or supply via -var / TF_VAR_* in CI.
+acr_name          = "czwacr0001" # must be globally unique, alphanumeric
+alert_emails      = ["aczarnick@example.com"]
+budget_start_date = "2026-08-01T00:00:00Z" # first day of a month, RFC3339 UTC
+# location             = "centralus"
+# monthly_budget_amount = 15

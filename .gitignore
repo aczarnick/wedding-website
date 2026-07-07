@@ -38,3 +38,19 @@ next-env.d.ts
 
 # MacOS
 .DS_Store
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+# keep .terraform.lock.hcl committed; ignore local var files (may contain PII/emails)
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
