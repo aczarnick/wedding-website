@@ -39,9 +39,12 @@ next-env.d.ts
 # MacOS
 .DS_Store
 
+# Claude
 # Agent instructions live in AGENTS.md; Claude Code reads CLAUDE.md, so create
 # a local symlink once per clone: ln -s AGENTS.md CLAUDE.md
 CLAUDE.md
+# run-wedding-website skill driver output
+.claude/skills/run-wedding-website/screenshots/
 
 # Terraform
 **/.terraform/*
