@@ -12,6 +12,8 @@ const EXPECTED_HREFS: Record<(typeof NAV_LINKS)[number], string> = {
 };
 
 describe('Header', () => {
+  // Only the resolved href is verified here, not next/link vs. plain <a> navigation
+  // mechanics (client-side route vs. full page reload) — jsdom can't observe that distinction.
   it.each(NAV_LINKS)('renders every "%s" link with the correct href', (link) => {
     render(<Header />);
 
