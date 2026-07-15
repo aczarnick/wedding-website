@@ -4,6 +4,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Hold @types/node at the Node 24 LTS major; drop once Node 26 reaches LTS (Oct 2026).
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -12,3 +16,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Hold node at the 24 LTS line; drop once Node 26 reaches LTS (Oct 2026).
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
