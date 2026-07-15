@@ -5,17 +5,17 @@ import Link from 'next/link';
 import { NAV_LINKS } from '@/constants/events';
 import { MobileNavLink } from './MobileNavLink';
 
-// Determine if a link is a route (page) or hash (section)
+// Links that point to their own page rather than a hash-anchored section
+const ROUTE_LINKS = new Set<string>(['Registry', 'Gallery']);
+
 const getHref = (link: string): string => {
-  if (link === 'Registry' || link === 'Gallery') {
+  if (ROUTE_LINKS.has(link)) {
     return `/${link.toLowerCase()}`;
   }
   return `/#${link}`;
 };
 
-const isRouteLink = (link: string): boolean => {
-  return link === 'Registry' || link === 'Gallery';
-};
+const isRouteLink = (link: string): boolean => ROUTE_LINKS.has(link);
 
 export const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
