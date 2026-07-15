@@ -8,6 +8,14 @@ updates:
     ignore:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # TypeScript 7 breaks lint: typescript-eslint (bundled by eslint-config-next) peers
+      # typescript <6.1.0. Drop once eslint-config-next ships a TS 7-compatible typescript-eslint.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # eslint 10 breaks lint: eslint-plugin-react (bundled by eslint-config-next) has no
+      # eslint 10-compatible release. Drop once eslint-config-next supports eslint 10.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
