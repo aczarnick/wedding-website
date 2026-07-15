@@ -16,6 +16,11 @@ describe('DaysUntilWedding', () => {
     expect(DaysUntilWedding()).toBe('1 Day to go!');
   });
 
+  it('rounds a partial day up rather than down (11 hours before the wedding)', () => {
+    vi.setSystemTime(new Date('2026-10-09T13:00:00'));
+    expect(DaysUntilWedding()).toBe('1 Day to go!');
+  });
+
   it('returns the plural message when the wedding is N days away', () => {
     vi.setSystemTime(new Date('2026-10-01T00:00:00'));
     expect(DaysUntilWedding()).toBe('9 Days to go!');
