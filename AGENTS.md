@@ -8,8 +8,9 @@ This file provides guidance to AI coding agents (Claude Code, Copilot, etc.) wor
 - `npm run build` — production build; must pass with zero errors before any PR
 - `npm run lint` — ESLint (`eslint-config-next`); add `--fix` to auto-correct
 - `npm run start` — run production build
+- `npm run check:images` — fails if any file under `public/images` exceeds size/dimension thresholds (`scripts/check-image-sizes.mjs`); CI-enforced
 
-There is no test suite. Validate app changes with `npm run build` and `npm run lint`.
+There is no test suite. Validate app changes with `npm run build`, `npm run lint`, and `npm run check:images`.
 
 For changes under `infra/terraform/`, CI additionally enforces `terraform fmt -check -recursive infra/terraform` and, per environment, `terraform -chdir=infra/terraform/environments/<env> init -backend=false && terraform validate`. Workflow file changes are checked with `actionlint`.
 
