@@ -44,6 +44,12 @@ variable "budget_start_date" {
   description = "Budget start, first day of a month in RFC3339 UTC, e.g. 2026-08-01T00:00:00Z."
 }
 
+variable "cloudflare_zone_name" {
+  type        = string
+  description = "Cloudflare zone (the site's domain). Zone ID is looked up at plan time."
+  default     = "czarnickwedding.com"
+}
+
 variable "tags" {
   type        = map(string)
   description = "Common tags."

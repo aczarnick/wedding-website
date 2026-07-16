@@ -2,7 +2,8 @@
 tfstate_storage_account_name = "czwtfstate0001"
 alert_emails                 = ["aczarnick@example.com"]
 budget_start_date            = "2026-08-01T00:00:00Z"
-# Warm prod (no cold starts): change the committed default min_replicas = 1 in
-# variables.tf so the pipeline applies it — a local tfvars override is reverted.
+# Prod runs warm by default (min_replicas = 1, no cold starts). To go back to
+# scale-to-zero savings, change the committed default to 0 in variables.tf so
+# the pipeline applies it — a local tfvars override is reverted.
 # Origin lock (allowed_ip_ranges) is set via the ALLOWED_IP_RANGES_JSON GitHub
 # repo variable, NOT here. See docs/deployment/README.md.
