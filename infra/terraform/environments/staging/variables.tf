@@ -56,3 +56,9 @@ variable "tags" {
     managed     = "terraform"
   }
 }
+
+variable "custom_domains" {
+  type        = list(string)
+  description = "Public hostnames bound to the staging app (behind the Cloudflare proxy)."
+  default     = ["staging.czarnickwedding.com"]
+}

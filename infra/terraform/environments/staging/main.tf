@@ -20,6 +20,11 @@ module "stack" {
   min_replicas               = var.min_replicas
   max_replicas               = var.max_replicas
   allowed_ip_ranges          = var.allowed_ip_ranges
+  cloudflare_zone_id         = data.terraform_remote_state.shared.outputs.cloudflare_zone_id
+  cloudflare_zone_name       = data.terraform_remote_state.shared.outputs.cloudflare_zone_name
+  custom_domains             = var.custom_domains
+  origin_certificate_pem     = data.terraform_remote_state.shared.outputs.origin_certificate_pem
+  origin_private_key_pem     = data.terraform_remote_state.shared.outputs.origin_private_key_pem
   alert_emails               = var.alert_emails
   monthly_budget_amount      = var.monthly_budget_amount
   budget_start_date          = var.budget_start_date

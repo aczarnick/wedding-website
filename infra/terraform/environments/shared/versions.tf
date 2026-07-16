@@ -5,6 +5,14 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 }
 
@@ -19,3 +27,8 @@ provider "azurerm" {
   # stop azurerm v4 from auto-registering all of them (which 403s and fails plan).
   resource_provider_registrations = "none"
 }
+
+# Auth via the CLOUDFLARE_API_TOKEN env var — a GitHub secret in CI, exported
+# locally; required scopes in docs/deployment/README.md. Never hardcode
+# credentials here.
+provider "cloudflare" {}

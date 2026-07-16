@@ -63,3 +63,30 @@ variable "tags" {
   description = "Resource tags."
   default     = {}
 }
+
+variable "cloudflare_zone_id" {
+  type        = string
+  description = "Cloudflare zone ID for the DNS records."
+}
+
+variable "cloudflare_zone_name" {
+  type        = string
+  description = "Zone apex name. Hostnames equal to it get an A record to the environment static IP; others get a CNAME to the app FQDN."
+}
+
+variable "custom_domains" {
+  type        = set(string)
+  description = "Public hostnames to bind to the app (behind the Cloudflare proxy). Empty disables all custom-domain management."
+  default     = []
+}
+
+variable "origin_certificate_pem" {
+  type        = string
+  description = "Cloudflare Origin CA certificate (PEM), from the shared stack."
+}
+
+variable "origin_private_key_pem" {
+  type        = string
+  description = "Origin CA private key (PEM), from the shared stack."
+  sensitive   = true
+}

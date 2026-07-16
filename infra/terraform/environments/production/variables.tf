@@ -11,8 +11,8 @@ variable "resource_group_name" {
 
 variable "min_replicas" {
   type        = number
-  description = "Minimum replicas. 0 = cheapest (guests may hit a cold start); set default to 1 here to keep prod warm (~$3-14/mo)."
-  default     = 0
+  description = "Minimum replicas. 1 keeps prod warm so guests never hit a cold start (~$3-14/mo); 0 = cheapest."
+  default     = 1
 }
 
 variable "max_replicas" {
@@ -55,4 +55,10 @@ variable "tags" {
     environment = "production"
     managed     = "terraform"
   }
+}
+
+variable "custom_domains" {
+  type        = list(string)
+  description = "Public hostnames bound to the production app (behind the Cloudflare proxy)."
+  default     = ["czarnickwedding.com", "www.czarnickwedding.com"]
 }

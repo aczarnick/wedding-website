@@ -113,36 +113,50 @@ waits for your approval.
 
 ## Custom domains, TLS, and Cloudflare
 
-Do this once per host (`czarnickwedding.com`, `www`, `staging`). Get each app's
-values from Terraform outputs:
+Terraform manages all of it: Cloudflare DNS (proxied host records + `asuid.*`
+verification TXTs), zone SSL mode **Full (strict)**, a 15-year **Cloudflare
+Origin CA certificate** (issued in `shared`, uploaded and SNI-bound in each
+environment), and the Container App hostname bindings. The committed hostname
+sets live in each env root's `custom_domains` variable default.
 
-```bash
-cd infra/terraform/environments/production   # or staging
-terraform output -raw custom_domain_verification_id
-terraform output -raw default_fqdn            # sensitive (origin) — -raw to reveal
-terraform output -raw environment_static_ip   # sensitive (origin) — -raw to reveal
-```
+One GitHub **secret** feeds the provider (also export it for local applies):
 
-1. **Cloudflare DNS — start DNS-only (grey cloud)** so ACA can validate cleanly:
-   - `www` / `staging`: **CNAME** → the app's `default_fqdn`.
-   - apex `czarnickwedding.com`: **A** → the app's `environment_static_ip`.
-   - For each host add **TXT** `asuid.<host>` = the app's
-     `custom_domain_verification_id`.
-2. **Bind the domain** to the app (portal → Container App → Custom domains, or
-   `az containerapp hostname add`).
-3. **Certificate — use a Cloudflare Origin CA certificate** (do NOT use the ACA
-   free managed cert: it silently fails to renew behind the Cloudflare proxy).
-   Create an Origin cert in Cloudflare (covers `czarnickwedding.com` +
-   `*.czarnickwedding.com`), then upload and bind it in **each** environment
-   separately — `cae-czw-staging` and `cae-czw-production` are distinct ACA
-   environments (`az containerapp hostname bind` / portal).
-4. **Turn the Cloudflare proxy ON (orange cloud)** and set SSL/TLS mode to
-   **Full (strict)**. This gives caching/WAF/DDoS protection and absorbs traffic
-   spikes — a cost control, not just security.
-5. **Lock the origin.** Set the Cloudflare IP ranges as a **GitHub repo
-   variable** `ALLOWED_IP_RANGES_JSON` (NOT a local `terraform.tfvars` — the
-   pipeline would revert that), then re-run the Infra workflow. Only Cloudflare
-   can then reach ACA. Value (verify current list at https://www.cloudflare.com/ips/):
+- `CLOUDFLARE_API_TOKEN` — a single zone-scoped token: **Zone:Read, DNS:Edit,
+  Zone Settings:Edit, and SSL and Certificates:Edit** on the zone. The last
+  permission covers Origin CA certificate issuance — do NOT also configure an
+  Origin CA key: the provider forbids dual credentials, and Origin CA keys are
+  deprecated (Cloudflare removes them 2026-09-30).
+
+Notes:
+
+- The ACA **free managed cert is deliberately not used** — it silently fails to
+  renew behind the Cloudflare proxy. The Origin CA cert is trusted only by
+  Cloudflare, which is exactly the trust path in use.
+- The Origin CA **private key (and certificate) live in Terraform state**
+  (AAD-locked storage account) — accepted trade-off, see
+  `docs/superpowers/specs/2026-07-10-cloudflare-custom-domain-tls-design.md`.
+  The provider credentials themselves are env-var-only and never persisted to
+  state.
+- Hostname ownership is validated via the `asuid.*` TXT records, so records can
+  stay **proxied (orange) the whole time**.
+- Cert rotation before 2041: taint `tls_private_key.origin` in `shared` and
+  re-apply shared → staging → production. The env cert resource is
+  create-before-destroy with a fingerprint-suffixed name, so the new cert
+  exists before the old one is removed; the hostname bindings switch during
+  each env apply (do it in a quiet moment — the binding switch may blip).
+
+### Origin lock + smoke hosts (after DNS is live)
+
+1. Set repo variables `STAGING_SMOKE_HOST=staging.czarnickwedding.com` and
+   `PRODUCTION_SMOKE_HOST=czarnickwedding.com` so deploy smoke tests go through
+   Cloudflare. Set them as soon as the public hostnames serve — mandatory
+   before the origin lock, or the next deploy's smoke test hits the
+   now-blocked default FQDNs and fails.
+
+2. Set repo variable `ALLOWED_IP_RANGES_JSON` to the Cloudflare ranges (verify
+   at https://www.cloudflare.com/ips/) and re-run Infra. Only Cloudflare can
+   then reach the ACA default FQDNs. Don't use a local `terraform.tfvars` — the
+   pipeline would revert it:
 
    ```
    [{"name":"cf01","cidr":"173.245.48.0/20"},{"name":"cf02","cidr":"103.21.244.0/22"},
@@ -155,14 +169,22 @@ terraform output -raw environment_static_ip   # sensitive (origin) — -raw to r
     {"name":"cf15","cidr":"131.0.72.0/22"}]
    ```
 
-6. **Point smoke tests through Cloudflare.** Once the origin is IP-locked, GitHub
-   runners can no longer reach the default ACA FQDN. Set repo variables
-   `STAGING_SMOKE_HOST=staging.czarnickwedding.com` and
-   `PRODUCTION_SMOKE_HOST=czarnickwedding.com` so deploys smoke-test through the
-   public hostnames. (Leave them unset until the origin lock is in place.)
+   IPv4 ranges only, deliberately: the origin is reached via the IPv4
+   environment static IP, so Cloudflare's IPv6 egress ranges never apply here.
 
-   Optional hardening: enable Cloudflare **Authenticated Origin Pull** (mTLS) for
-   a stronger origin lock than IP allow-listing alone.
+Optional hardening: Cloudflare **Authenticated Origin Pull** (mTLS) for a
+stronger origin lock than IP allow-listing alone.
+
+### One-time apex cutover (2026-07, for the record)
+
+The apex previously served from a home server via Cloudflare Tunnel. Cutover
+was: bind apex+www while the apex record still pointed at the tunnel (TXT
+validation), verify `www` end-to-end, then flip the apex record to the
+environment static IP (`terraform import` + apply, or an atomic dashboard edit
+when the plan would replace rather than update). A targeted apply
+(`-target=module.stack.azurerm_container_app_custom_domain.this ...`) was used
+once to stage bindings before DNS — do not reach for `-target` in normal
+operation.
 
 ## Rollback
 
@@ -171,14 +193,15 @@ Single revision mode → roll back by redeploying a known-good image:
 `<acr>.azurecr.io/web@sha256:<digest>` or `<acr>.azurecr.io/web:<old-sha>`. It
 skips the build and redeploys that exact image through staging → production.
 
-## Keeping prod warm (optional)
+## Keeping prod warm
 
-Guests hitting a scaled-to-zero app pay a one-time cold start (~seconds). To
-avoid it, change the **committed** default `min_replicas = 1` in
+Production's committed default is `min_replicas = 1` (~$3–14/mo) so guests
+never hit a scale-from-zero cold start (~20–30 s). To go back to the cheapest
+setup, change the committed default back to `0` in
 `infra/terraform/environments/production/variables.tf` and let the Infra
-pipeline apply it (~$3–14/mo). Don't use a local `terraform.tfvars` — the
-pipeline only passes the repo-variable-backed vars, so a tfvars override would be
-reverted on the next apply.
+pipeline apply it. Don't use a local `terraform.tfvars` — the pipeline only
+passes the repo-variable-backed vars, so a tfvars override would be reverted on
+the next apply.
 
 ## Teardown
 

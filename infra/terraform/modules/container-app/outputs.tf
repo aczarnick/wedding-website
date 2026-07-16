@@ -17,3 +17,8 @@ output "latest_revision_name" {
   value       = azurerm_container_app.this.latest_revision_name
   description = "Latest revision name."
 }
+
+output "id" {
+  value       = azurerm_container_app.this.id
+  description = "Container App resource ID (custom-domain bindings attach to it)."
+}

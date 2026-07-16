@@ -65,4 +65,4 @@ Environment variables that CI passes come from GitHub repo variables (e.g. `ACR_
 
 ### Cost guardrails (pay-as-you-go, no hard cap)
 
-Spend is bounded structurally, not by a spending limit: scale-to-zero (`min_replicas=0`), capped `max_replicas` (staging 1, production 2), ACR Basic, Log Analytics 1 GB/day quota, Cloudflare proxy in front, plus budget email alerts. Don't add premium SKUs or raise replica caps without flagging the cost implication.
+Spend is bounded structurally, not by a spending limit: staging scales to zero (`min_replicas=0`), production keeps one warm replica (`min_replicas=1`, deliberate — no guest-facing cold starts, ~$3–14/mo), capped `max_replicas` (staging 1, production 2), ACR Basic, Log Analytics 1 GB/day quota, Cloudflare proxy in front, plus budget email alerts. Don't add premium SKUs or raise replica caps without flagging the cost implication.
