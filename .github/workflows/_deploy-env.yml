@@ -57,17 +57,24 @@ jobs:
             || { echo "::error::Container App ${{ inputs.app_name }} not found — run the Infra workflow first."; exit 1; }
 
       # Inert until issue #62 adds prisma/schema.prisma (and the referenced
-      # scripts/ensure-db-user.mjs + db:migrate:deploy npm script). Runs migrations
-      # against this env's DB before the new image goes live, so schema never lags
-      # the code. Passwordless: az is logged in as the AAD admin (the deploy SP is
-      # a member of czw-sql-admins), so DefaultAzureCredential resolves via the CLI.
-      # #62 must also add `actions/setup-node` (from .nvmrc) + `npm ci` above this
-      # step so `node` and `npm run` have the toolchain and dependencies.
+      # Runs migrations against this env's DB before the new image goes live, so
+      # schema never lags the code. Passwordless: az is logged in as the AAD admin
+      # (the deploy SP is a member of czw-sql-admins), so DefaultAzureCredential
+      # resolves via the CLI.
+      #
+      # INERT until the CI-migration wiring lands. #62 added the Prisma schema +
+      # local-dev tooling but NOT the deploy path, so the sentinel is
+      # scripts/ensure-db-user.mjs (still absent). Activating this step means:
+      #   1. create scripts/ensure-db-user.mjs (idempotent CREATE USER ... FROM
+      #      EXTERNAL PROVIDER for the app MI, via mssql + DefaultAzureCredential),
+      #   2. add a `db:migrate:deploy` npm script (`prisma migrate deploy`),
+      #   3. add `actions/setup-node` (from .nvmrc) + `npm ci` above this step,
+      #   4. grant the deploy identity SQL firewall-rule write (bootstrap step 5).
       - name: Run database migrations
         run: |
           set -euo pipefail
-          if [ ! -f prisma/schema.prisma ]; then
-            echo "No prisma/schema.prisma yet — skipping migrations (inert until issue #62)."
+          if [ ! -f scripts/ensure-db-user.mjs ]; then
+            echo "CI-migration wiring not present (scripts/ensure-db-user.mjs) — skipping."
             exit 0
           fi
 

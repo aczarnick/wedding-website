@@ -132,13 +132,16 @@ Each migrate step:
 4. `npx prisma migrate deploy`.
 5. Remove the temporary firewall rule (always, even on failure).
 
-**Guarded on `prisma/schema.prisma` existence.** The deploy job checks out the
-repo, so until #62 adds the schema the guard (`if [ -f prisma/schema.prisma ]`)
-early-exits and CI stays green. When #62 lands it must add `actions/setup-node`
-(from `.nvmrc`) + `npm ci` to the deploy job and create
-`scripts/ensure-db-user.mjs` + the `db:migrate:deploy` npm script; the guard then
-passes and the grant + migrate run. `deploy.yml` currently ignores
-`infra/terraform/**` and `docs/**` path pushes; that is unchanged.
+**Guarded on `scripts/ensure-db-user.mjs` existence.** The deploy job checks out
+the repo and early-exits when that file is absent, so CI stays green. #62 landed
+the Prisma schema + local-dev tooling but **not** the deploy-migration path, so
+the guard's sentinel is deliberately the still-absent `ensure-db-user.mjs` rather
+than `prisma/schema.prisma` (which now exists). Activating the step is a distinct
+follow-up: create `scripts/ensure-db-user.mjs`, add a `db:migrate:deploy` npm
+script (`prisma migrate deploy`), add `actions/setup-node` + `npm ci` to the
+deploy job, and grant the deploy identity SQL firewall-rule write (bootstrap
+step 5). `deploy.yml` still ignores `infra/terraform/**` and `docs/**` pushes;
+that is unchanged.
 
 ### 5. Bootstrap / operational prerequisites (Owner-run, not CI — documented only)
 
