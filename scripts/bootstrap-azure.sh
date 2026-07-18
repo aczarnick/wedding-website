@@ -64,7 +64,7 @@ echo "==> Register resource providers (async; finishes in the background before 
 # = "none"), so every namespace it touches must be registered here.
 for ns in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry \
           Microsoft.Insights Microsoft.ManagedIdentity Microsoft.Storage \
-          Microsoft.Consumption Microsoft.Authorization; do
+          Microsoft.Sql Microsoft.Consumption Microsoft.Authorization; do
   az provider register --namespace "$ns" --only-show-errors -o none
 done
 
