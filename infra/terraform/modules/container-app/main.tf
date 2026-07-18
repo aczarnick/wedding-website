@@ -7,12 +7,20 @@ resource "azurerm_container_app" "this" {
 
   identity {
     type         = "UserAssigned"
-    identity_ids = [var.acr_pull_identity_id]
+    identity_ids = concat([var.acr_pull_identity_id], var.additional_identity_ids)
   }
 
   registry {
     server   = var.acr_login_server
     identity = var.acr_pull_identity_id
+  }
+
+  dynamic "secret" {
+    for_each = { for s in var.secrets : s.name => s.value }
+    content {
+      name  = secret.key
+      value = secret.value
+    }
   }
 
   ingress {
@@ -51,6 +59,22 @@ resource "azurerm_container_app" "this" {
       env {
         name  = "NODE_ENV"
         value = "production"
+      }
+
+      dynamic "env" {
+        for_each = { for e in var.extra_env : e.name => e.value }
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+
+      dynamic "env" {
+        for_each = { for e in var.secret_env : e.name => e.secret_name }
+        content {
+          name        = env.key
+          secret_name = env.value
+        }
       }
 
       startup_probe {
