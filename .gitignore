@@ -29,6 +29,15 @@ env.development.local
 env.test.local
 env.production.local
 
+# Local env files (DATABASE_URL etc.) — the lines above lack leading dots and
+# do not match a real .env file
+.env
+.env.*
+!.env.example
+
+# Prisma generated client
+/src/generated
+
 # Vercel deployment
 vercel
 
