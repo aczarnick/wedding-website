@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+model Party {
+  id           String       @id @default(uuid(4)) @db.UniqueIdentifier
+  displayName  String
+  message      String?
+  addGuestCap  Int          @default(5)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  guests       Guest[]
+  auditEntries AuditEntry[]
+}
+
+model Guest {
+  id               String       @id @default(uuid(4)) @db.UniqueIdentifier
+  partyId          String       @db.UniqueIdentifier
+  party            Party        @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  firstName        String
+  lastName         String
+  rsvpStatus       String       @default("pending")
+  songRequest      String?
+  source           String       @default("admin")
+  flaggedForReview Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  auditEntries     AuditEntry[]
+}
+
+model AuditEntry {
+  id         String   @id @default(uuid(4)) @db.UniqueIdentifier
+  partyId    String   @db.UniqueIdentifier
+  party      Party    @relation(fields: [partyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  guestId    String?  @db.UniqueIdentifier
+  guest      Guest?   @relation(fields: [guestId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  action     String
+  actorType  String
+  actorEmail String?
+  before     String?  @db.NVarChar(Max)
+  after      String?  @db.NVarChar(Max)
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
+
+model Settings {
+  id                 Int      @id @default(1)
+  rsvpDeadline       DateTime
+  defaultAddGuestCap Int      @default(5)
+}

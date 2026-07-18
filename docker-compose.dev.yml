@@ -1,0 +1,29 @@
+services:
+  db:
+    # SQL Server 2022 (not 2025): SQL Server 2025 crashes on Apple Silicon under
+    # Rosetta emulation with an AVX assertion (ThreadContextSignals.cpp). 2022 has
+    # no such requirement and runs fine. Prod is Azure SQL (evergreen); the schema
+    # uses only provider-level `sqlserver` features, so 2022 locally is equivalent
+    # for development.
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    container_name: czw-rsvp-db
+    environment:
+      ACCEPT_EULA: 'Y'
+      MSSQL_SA_PASSWORD: 'Local_Dev_Pass123'
+      MSSQL_PID: 'Developer'
+    # Host port 14330 (not the default 1433) to avoid colliding with any other
+    # local SQL Server instance; the container still listens on 1433 internally.
+    ports:
+      - '14330:1433'
+    volumes:
+      - czw-rsvp-db-data:/var/opt/mssql
+    healthcheck:
+      test: ['CMD-SHELL', '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  czw-rsvp-db-data:

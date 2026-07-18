@@ -9,6 +9,9 @@ out
 dist
 build
 
+# Prisma generated client (regenerated during the image build)
+src/generated
+
 # Git
 .git
 .gitignore
@@ -33,7 +36,8 @@ Thumbs.db
 # Misc
 *.log
 README.md
-.env*.local
+.env
+.env.*
 
 # Test coverage
 coverage
