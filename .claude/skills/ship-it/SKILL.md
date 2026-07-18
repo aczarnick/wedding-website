@@ -11,9 +11,10 @@ checkpoints — **plan approval** and **final PR review** — and running the mi
 autonomously.
 
 You are working on the **wedding-website** repo. `gh` is authenticated. All paths
-are relative to the repo root. The verification gate is
-`npm run lint && npm run build && npm run check:images` (there is no test suite —
-see `AGENTS.md`).
+are relative to the repo root. The verification gate **mirrors CI**
+(`.github/workflows/ci.yml`): `npm run lint && npm run check:images && npm test &&
+npm run build`, plus a one-time `docker build` for CI parity. Run the fast gate as
+often as needed; run `docker build` once, at the end.
 
 ## Checkpoint model
 
@@ -95,16 +96,25 @@ work is direct implementation validated by the gate below.
 
 ## Phase 6 — Verify (autonomous)
 
-Run the full gate **in the worktree**:
+Run the fast gate **in the worktree**, in CI order:
 
 ```bash
-npm run lint && npm run build && npm run check:images
+npm run lint && npm run check:images && npm test && npm run build
 ```
 
-Show the actual output. On failure, apply the [Failure handling](#failure-handling)
-rule. For UI/runtime-visible changes, additionally drive the app per the
+**Trim output** — pipe long commands to `tail`/`grep` and keep pass/fail plus any
+failing lines. "Show the actual output" means the evidence, not the whole dump;
+verbatim gate and build logs are the biggest avoidable context cost.
+
+On failure, apply the [Failure handling](#failure-handling) rule. For
+UI/runtime-visible changes, additionally drive the app per the
 `run-wedding-website` skill and view the result — a green gate does not prove
 rendered behavior.
+
+The heavy **CI-parity check** — `docker build` (or `podman build`; see
+`LEARNINGS.md`) — is slow (image pull + `npm ci` + build) and its output is large.
+Run it **once**, at the end (Phase 7, after review, before pushing) — never after
+every change.
 
 ## Phase 7 — Code review (autonomous)
 
@@ -115,8 +125,14 @@ Run a code review over the diff and auto-apply its fixes:
 ```
 
 Capture each finding's outcome (`fixed` / `skipped`) — these feed the PR body.
-Because fixes can break the build, **re-run the Phase 6 gate** after review and
-apply the same failure rule.
+Because fixes can break the build, **re-run the Phase 6 fast gate** after review.
+Then run the one-time CI-parity check before shipping:
+
+```bash
+docker build -t czw:ci .   # or: podman build -t czw:ci .
+```
+
+Apply the [Failure handling](#failure-handling) rule to both.
 
 ## Phase 8 — Ship ⏸
 
