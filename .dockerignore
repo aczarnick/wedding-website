@@ -9,6 +9,9 @@ out
 dist
 build
 
+# Prisma generated client (regenerated during the image build)
+src/generated
+
 # Git
 .git
 .gitignore

@@ -3,14 +3,16 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PrismaClient } from '@/generated/prisma/client';
 import { PrismaMssql } from '@prisma/adapter-mssql';
 import { RSVP_STATUS, GUEST_SOURCE } from '@/lib/enums';
+import { seedDatabase } from '../../prisma/seed-data';
 
 const databaseUrl = process.env.DATABASE_URL;
 
 describe.skipIf(!databaseUrl)('seeded database', () => {
   let prisma: PrismaClient;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     prisma = new PrismaClient({ adapter: new PrismaMssql(databaseUrl!) });
+    await seedDatabase(prisma);
   });
 
   afterAll(async () => {
