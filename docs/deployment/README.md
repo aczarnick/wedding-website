@@ -260,14 +260,22 @@ variable **`ADMIN_EMAIL_ALLOWLIST`** (comma-separated emails), set by hand.
 ### Migrations
 
 `deploy.yml` runs `prisma migrate deploy` against each env's DB before promoting
-the image. The step is **inert until the CI-migration wiring lands** — it
-early-exits when `scripts/ensure-db-user.mjs` is absent. #62 added the Prisma
-schema + local-dev tooling but not the deploy path, so activating this step is a
-separate follow-up:
+the image, so schema never lags the code. The full path is wired
+(`scripts/ensure-db-user.mjs` grants the app identity least-privilege
+read/write; `db:migrate:deploy` applies migrations), but it is **gated on the
+`ENABLE_DB_MIGRATIONS` repo variable** and off by default — a deploy with it
+unset is pure `az` CLI, exactly as before.
 
-1. create `scripts/ensure-db-user.mjs` (idempotent `CREATE USER ... FROM EXTERNAL
-   PROVIDER` for the app identity, via `mssql` + `DefaultAzureCredential`);
-2. add a `db:migrate:deploy` npm script (`prisma migrate deploy`);
-3. add `actions/setup-node` + `npm ci` to the deploy job;
-4. grant the deploy identity **SQL firewall-rule write** on the staging +
-   production SQL servers — see manual step 5 in the bootstrap output.
+**Turning migrations on** (once, after the first `staging` apply creates the
+server):
+
+```bash
+gh variable set ENABLE_DB_MIGRATIONS --body true
+```
+
+`bootstrap-azure.sh` has already granted the deploy identity `SQL Server
+Contributor` on the app RGs (to open/close a transient firewall rule for the
+runner IP — GitHub runners aren't "Azure services") and added it to
+`czw-sql-admins` (to authenticate as the AAD admin). The migrate job authenticates
+passwordlessly via the runner's `az login` session. Migrations run per env in the
+promote order: staging → (approval) → production.

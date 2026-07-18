@@ -132,16 +132,17 @@ Each migrate step:
 4. `npx prisma migrate deploy`.
 5. Remove the temporary firewall rule (always, even on failure).
 
-**Guarded on `scripts/ensure-db-user.mjs` existence.** The deploy job checks out
-the repo and early-exits when that file is absent, so CI stays green. #62 landed
-the Prisma schema + local-dev tooling but **not** the deploy-migration path, so
-the guard's sentinel is deliberately the still-absent `ensure-db-user.mjs` rather
-than `prisma/schema.prisma` (which now exists). Activating the step is a distinct
-follow-up: create `scripts/ensure-db-user.mjs`, add a `db:migrate:deploy` npm
-script (`prisma migrate deploy`), add `actions/setup-node` + `npm ci` to the
-deploy job, and grant the deploy identity SQL firewall-rule write (bootstrap
-step 5). `deploy.yml` still ignores `infra/terraform/**` and `docs/**` pushes;
-that is unchanged.
+**Gated on the `ENABLE_DB_MIGRATIONS` repo variable** (off by default). The full
+path is wired in this issue — `actions/checkout` + `setup-node` (from `.nvmrc`) +
+`npm ci`, then `scripts/ensure-db-user.mjs` (idempotent `CREATE USER ... FROM
+EXTERNAL PROVIDER` granting the app identity `db_datareader`/`db_datawriter` only;
+migrations run as the admin, so the app never needs DDL) followed by
+`db:migrate:deploy`. The flag decouples "code present and reviewed" from "runs
+against a live DB," so the first post-merge deploy can't race the first Terraform
+apply: turn it on once, after the SQL server exists and the deploy identity has
+`SQL Server Contributor` + `czw-sql-admins` membership (both set by
+`bootstrap-azure.sh`). `deploy.yml` still ignores `infra/terraform/**` and
+`docs/**` pushes; that is unchanged.
 
 ### 5. Bootstrap / operational prerequisites (Owner-run, not CI — documented only)
 

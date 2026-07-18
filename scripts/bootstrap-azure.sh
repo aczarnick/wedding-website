@@ -192,6 +192,15 @@ done
 RG_SHARED_ID=$(az group show -n "$RG_SHARED" --query id -o tsv)
 assign "$DEPLOY_PRINCIPAL_ID" "AcrPush" "$RG_SHARED_ID"
 
+# CI migrations open a transient firewall rule for the runner IP on the env's SQL
+# server (GitHub runners aren't "Azure services"), so the deploy identity needs
+# SQL server management in the app RGs. Scoped to the two app RGs; only exercised
+# once ENABLE_DB_MIGRATIONS=true, but harmless to grant ahead of the first apply.
+for rg in "$RG_STAGING" "$RG_PRODUCTION"; do
+  RG_ID=$(az group show -n "$rg" --query id -o tsv)
+  assign "$DEPLOY_PRINCIPAL_ID" "SQL Server Contributor" "$RG_ID"
+done
+
 # Note: per-resource-group budgets (with email alerts) are created by Terraform.
 # A subscription-level budget can be added in the portal if desired, but the
 # Free Trial spending limit — not budgets — is the real hard cap on spend.
@@ -200,10 +209,10 @@ echo "==> SQL admin Entra group (AAD-only DB auth)"
 # The RSVP database is AAD-only — no SQL logins exist. Terraform sets this group
 # as the server's Entra admin (by object id, so the RG-Contributor infra identity
 # needs no directory permission). Group members can sign in to the DB as admin;
-# the deploy identity is a member so CI migrations (issue #62) authenticate
-# passwordlessly via its OIDC token. Creating an Entra group needs a directory
-# role (e.g. Groups Administrator) — if this errors, create the group by hand and
-# set the two repo variables below manually.
+# the deploy identity is a member so CI migrations authenticate passwordlessly via
+# its OIDC token. Creating an Entra group needs a directory role (e.g. Groups
+# Administrator) — if this errors, create the group by hand and set the two repo
+# variables below manually.
 SQL_ADMIN_GROUP="czw-sql-admins"
 SQL_ADMIN_GROUP_OID=$(az ad group show --group "$SQL_ADMIN_GROUP" --query id -o tsv 2>/dev/null \
   || az ad group create --display-name "$SQL_ADMIN_GROUP" --mail-nickname "$SQL_ADMIN_GROUP" --query id -o tsv)
@@ -261,11 +270,10 @@ MANUAL steps still required (see docs/deployment/README.md):
        az acr config authentication-as-arm update -n $ACR_NAME --status enabled
   4. Set 'acr_name' in infra/terraform/environments/shared to: $ACR_NAME
      (or rely on the TF_VAR_acr_name repo variable — already set).
-  5. Before enabling RSVP DB migrations (issue #62), grant the deploy identity
-     ($DEPLOY_CLIENT_ID) SQL firewall-rule write on the staging + production SQL
-     servers so the migrate job can open/close its runner IP, e.g.:
-       az role assignment create --assignee "$DEPLOY_CLIENT_ID" \\
-         --role "SQL Server Contributor" -g rg-czw-staging
-     (repeat for rg-czw-production). Not needed until migrations go live.
+  5. RSVP DB migrations in deploy.yml are OFF until you opt in. After the first
+     'staging' Terraform apply creates the SQL server, turn them on with:
+       gh variable set ENABLE_DB_MIGRATIONS --body true
+     (the deploy identity's SQL role + czw-sql-admins membership are already set
+     above). Set it back to any other value to disable again.
 =================================================================
 EOF
