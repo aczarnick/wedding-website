@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stand up the RSVP feature's Prisma data layer — schema (Party, Guest, AuditEntry, Settings), initial migration with CHECK constraints, and a seed script — developed against a local SQL Server 2025 container.
+**Goal:** Stand up the RSVP feature's Prisma data layer — schema (Party, Guest, AuditEntry, Settings), initial migration with CHECK constraints, and a seed script — developed against a local SQL Server 2022 container.
 
 **Architecture:** Prisma 7 with the `@prisma/adapter-mssql` driver adapter against SQL Server (local container for dev, Azure SQL in prod). Enums are modeled as `String` columns whose allowed values live in TS const objects (`src/lib/enums.ts`) and are enforced at the DB by CHECK constraints on the closed sets. No app routes consume the client yet, so the existing site build is functionally unchanged.
 
-**Tech Stack:** Prisma 7 (`prisma-client` generator), `@prisma/adapter-mssql`, `mssql`, SQL Server 2025 (Docker), Next.js 16, TypeScript strict, Vitest.
+**Tech Stack:** Prisma 7 (`prisma-client` generator), `@prisma/adapter-mssql`, `mssql`, SQL Server 2022 (Docker), Next.js 16, TypeScript strict, Vitest.
 
 ## Global Constraints
 
@@ -16,7 +16,7 @@
 - Enum allowed-value source of truth = `src/lib/enums.ts` const objects.
 - CHECK constraints on the **closed** sets only (`rsvpStatus`, `source`, `actorType`, `Settings.id`); **no** CHECK on `AuditEntry.action` (vocabulary grows across later issues).
 - Generated client output = `src/generated/prisma` (gitignored, regenerated via `postinstall`).
-- Local DB image: `mcr.microsoft.com/mssql/server:2025-latest`, `platform: linux/amd64`.
+- Local DB image: `mcr.microsoft.com/mssql/server:2022-latest`, `platform: linux/amd64`, host port `14330` (2025 crashes under Apple Silicon Rosetta with an AVX assertion; prod is evergreen Azure SQL so 2022 locally is equivalent).
 - Never commit a real `.env`; only `.env.example`.
 - Verification gate: `npm run lint && npm run build && npm run check:images` (+ `npm test`, + `docker build` since CI runs both).
 
@@ -86,7 +86,7 @@ In `eslint.config.mjs`, add `"src/generated/**"` to the `globalIgnores([...])` a
 ```dotenv
 # SQL Server connection for local dev (matches docker-compose.dev.yml).
 # Copy to .env and adjust as needed. SA password must meet SQL Server complexity rules.
-DATABASE_URL="sqlserver://localhost:1433;database=rsvp;user=sa;password=Local_Dev_Pass123;encrypt=true;trustServerCertificate=true"
+DATABASE_URL="sqlserver://localhost:14330;database=rsvp;user=sa;password=Local_Dev_Pass123;encrypt=true;trustServerCertificate=true"
 ```
 
 - [ ] **Step 7: Commit**
@@ -267,14 +267,14 @@ git commit -m "feat: Prisma schema (Party/Guest/AuditEntry/Settings) + config (#
 - Create: `docker-compose.dev.yml`
 
 **Interfaces:**
-- Produces: a SQL Server 2025 instance on `localhost:1433`, SA password `Local_Dev_Pass123`, matching `.env.example`.
+- Produces: a SQL Server 2022 instance on `localhost:14330`, SA password `Local_Dev_Pass123`, matching `.env.example`.
 
 - [ ] **Step 1: Write `docker-compose.dev.yml`**
 
 ```yaml
 services:
   db:
-    image: mcr.microsoft.com/mssql/server:2025-latest
+    image: mcr.microsoft.com/mssql/server:2022-latest
     platform: linux/amd64
     container_name: czw-rsvp-db
     environment:
@@ -282,7 +282,7 @@ services:
       MSSQL_SA_PASSWORD: 'Local_Dev_Pass123'
       MSSQL_PID: 'Developer'
     ports:
-      - '1433:1433'
+      - '14330:1433'
     volumes:
       - czw-rsvp-db-data:/var/opt/mssql
     healthcheck:
@@ -304,7 +304,7 @@ cp .env.example .env
 npm run db:up
 until [ "$(docker inspect -f '{{.State.Health.Status}}' czw-rsvp-db)" = "healthy" ]; do sleep 3; done; echo READY
 ```
-Expected: prints `READY` (container reports healthy). On Apple Silicon the `2025-latest` tag runs under amd64 emulation; CU1+ resolves the AVX startup crash.
+Expected: prints `READY` (container reports healthy). SQL Server 2022 runs under amd64 Rosetta emulation on Apple Silicon; 2025 is avoided because it crashes there with an AVX assertion.
 
 - [ ] **Step 3: Ensure the `rsvp` database exists** (Prisma migrate creates it if permitted; this is the explicit fallback)
 

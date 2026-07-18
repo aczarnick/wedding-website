@@ -24,7 +24,7 @@ and configuration moved to `prisma.config.ts`.
 |---|---|---|
 | Enum representation (SQL Server has no enum type — Prisma `enum` fails validation with P1012 on the `sqlserver` connector) | `String` columns + TS const-object unions in `src/lib/enums.ts` + DB `CHECK` constraints on the closed sets | Single source of truth in TS drives the app types; CHECK constraints make the DB reject bad values too (fail loud at both layers). |
 | JSON columns (SQL Server unsupported by Prisma's `Json` scalar) | `before`/`after` stored as `NVARCHAR(MAX)` JSON strings; app serializes/parses | Same class of connector limitation as enums; explicit string is honest about the storage. |
-| Local dev DB | SQL Server **2025** — `mcr.microsoft.com/mssql/server:2025-latest`, `platform: linux/amd64` | 2025 is GA (2025-11-18); Azure SQL is evergreen so 2025 is closer to prod than 2022. CU1+ fixes the Rosetta/AVX startup crash on Apple Silicon; the `2025-latest` tag now includes CU1+. Azure SQL Edge is retired (2025-09-30) and dropped ARM64, so it is not an option. |
+| Local dev DB | SQL Server **2022** — `mcr.microsoft.com/mssql/server:2022-latest`, `platform: linux/amd64`, host port **14330** | 2025 was the original pick, but it crashes on this machine's Podman + applehv Rosetta with an AVX assertion (`ThreadContextSignals.cpp`); the CU1 AVX fix only applies to Docker Desktop's Rosetta, and neither Docker Desktop nor OrbStack is installed here. 2022 runs cleanly under the same Podman/Rosetta. Prod is Azure SQL (evergreen) and the schema uses only provider-level `sqlserver` features, so 2022-vs-2025 makes no functional difference. Host port 14330 (not 1433) avoids colliding with a pre-existing local SQL Server. Azure SQL Edge is retired (2025-09-30) and dropped ARM64, so it is not an option. |
 | PK type | UUID **v4** (random), `@default(uuid(4))`, mapped `@db.UniqueIdentifier` | Non-enumerable party ids is the security goal (open name lookup); v7 leaks a sortable timestamp prefix, v4 does not. |
 | Prisma runtime | Driver adapter `@prisma/adapter-mssql` (uses the `mssql` driver) + `new PrismaClient({ adapter })` | Prisma 7 removed the bundled query engine; a driver adapter is required for SQL Server. |
 | Client generation | `generator client { provider = "prisma-client"; output = "../src/generated/prisma" }`, gitignored, regenerated via `postinstall` | Prisma 7's default generator requires an explicit output path and no longer writes into `node_modules/@prisma/client`. |
@@ -88,14 +88,14 @@ the generated SQL:
 ## Local dev ergonomics
 
 - **`docker-compose.dev.yml`** (separate from the prod `docker-compose.yml`):
-  `mcr.microsoft.com/mssql/server:2025-latest`, `platform: linux/amd64`,
-  `ACCEPT_EULA=Y`, `MSSQL_SA_PASSWORD`, port `1433:1433`, a named volume for
+  `mcr.microsoft.com/mssql/server:2022-latest`, `platform: linux/amd64`,
+  `ACCEPT_EULA=Y`, `MSSQL_SA_PASSWORD`, port `14330:1433`, a named volume for
   persistence, and a healthcheck.
 - **npm scripts:** `db:up`, `db:down`, `db:migrate` (`prisma migrate dev`),
   `db:seed` (`prisma db seed`), `db:reset` (`prisma migrate reset`),
   `db:studio` (`prisma studio`).
 - **`.env.example`** documents `DATABASE_URL`
-  (`sqlserver://localhost:1433;database=rsvp;user=sa;password=...;encrypt=true;trustServerCertificate=true`).
+  (`sqlserver://localhost:14330;database=rsvp;user=sa;password=...;encrypt=true;trustServerCertificate=true`).
   Confirm the real `.env` is gitignored; never commit a connection string.
 
 ## Client singleton (`src/lib/prisma.ts`)
