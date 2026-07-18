@@ -33,7 +33,8 @@ Thumbs.db
 # Misc
 *.log
 README.md
-.env*.local
+.env
+.env.*
 
 # Test coverage
 coverage
