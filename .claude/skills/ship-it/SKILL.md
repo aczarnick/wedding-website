@@ -27,6 +27,22 @@ often as needed; run `docker build` once, at the end.
 
 Announce the current phase as you enter it so the run is legible.
 
+## Phase 0 — Environment precheck
+
+Before touching the issue, confirm the tools the run will need so substitutions
+surface now, not at the verify gate. Read `LEARNINGS.md` first for this machine's
+known quirks, then check only what the issue will actually use:
+
+- **Container runtime** (only if the change may touch the DB or Docker): is a
+  runtime on PATH? `docker` may be a dangling symlink here — fall back to `podman`
+  and confirm its machine is running. Note which command the rest of the run uses.
+- **DB port** (only if the work needs a local database): confirm the target host
+  port is free before `db:up` — a pre-existing container may hold the default.
+- **Gate tools**: `node`/`npm` satisfy `engines`; `gh` is authenticated.
+
+Keep this to a few quick commands. Don't block a docs- or content-only issue on
+container checks it will never use.
+
 ## Phase 1 — Resolve the issue
 
 If an issue number was given, fetch it:
