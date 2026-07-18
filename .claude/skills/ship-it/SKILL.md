@@ -143,6 +143,17 @@ Left open (your call): <finding that review skipped> …
 Report the PR URL. The run ends here — the user reviews the PR. Leave the
 worktree in place (this repo keeps them; do not auto-remove).
 
+## Phase 9 — Retro (autonomous)
+
+Close the improvement loop. If anything surprised you or the skill
+under-specified a step — a stale command, a missing env check, a wrong
+assumption, a gotcha that cost turns — append one dated bullet per learning to
+`.claude/skills/ship-it/LEARNINGS.md`. Skip silently on a frictionless run.
+
+When a learning **recurs** across runs, promote it into this `SKILL.md` (a gotcha
+or a phase tweak) and prune the folded entry from `LEARNINGS.md`. That promotion
+is what makes the skill improve over time rather than relearning the same lesson.
+
 ## Failure handling
 
 When the verify gate (Phase 6/7) or code review fails:
@@ -157,3 +168,5 @@ When the verify gate (Phase 6/7) or code review fails:
 - One issue in flight at a time; finish and verify before starting another.
 - Never skip the plan-approval or PR checkpoints, even for trivial issues.
 - Keep the branch/worktree/PR naming consistent: `issue-<n>-<slug>` throughout.
+- Read `LEARNINGS.md` at the start of a run for known gotchas; log new ones there
+  at the end (Phase 9). The skill is meant to get sharper each run.
