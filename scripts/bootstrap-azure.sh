@@ -196,6 +196,23 @@ assign "$DEPLOY_PRINCIPAL_ID" "AcrPush" "$RG_SHARED_ID"
 # A subscription-level budget can be added in the portal if desired, but the
 # Free Trial spending limit — not budgets — is the real hard cap on spend.
 
+echo "==> SQL admin Entra group (AAD-only DB auth)"
+# The RSVP database is AAD-only — no SQL logins exist. Terraform sets this group
+# as the server's Entra admin (by object id, so the RG-Contributor infra identity
+# needs no directory permission). Group members can sign in to the DB as admin;
+# the deploy identity is a member so CI migrations (issue #62) authenticate
+# passwordlessly via its OIDC token. Creating an Entra group needs a directory
+# role (e.g. Groups Administrator) — if this errors, create the group by hand and
+# set the two repo variables below manually.
+SQL_ADMIN_GROUP="czw-sql-admins"
+SQL_ADMIN_GROUP_OID=$(az ad group show --group "$SQL_ADMIN_GROUP" --query id -o tsv 2>/dev/null \
+  || az ad group create --display-name "$SQL_ADMIN_GROUP" --mail-nickname "$SQL_ADMIN_GROUP" --query id -o tsv)
+grp_member() { # member-object-id
+  az ad group member add --group "$SQL_ADMIN_GROUP_OID" --member-id "$1" --only-show-errors -o none 2>/dev/null || true
+}
+grp_member "$CURRENT_USER_OID"
+grp_member "$DEPLOY_PRINCIPAL_ID"
+
 echo "==> GitHub repository variables"
 gh_var() { gh variable set "$1" -R "$GITHUB_REPO" -b "$2"; }
 gh_var AZURE_TENANT_ID       "$TENANT_ID"
@@ -205,6 +222,8 @@ gh_var AZURE_DEPLOY_CLIENT_ID "$DEPLOY_CLIENT_ID"
 gh_var TFSTATE_STORAGE_ACCOUNT "$TFSTATE_SA"
 gh_var ACR_NAME              "$ACR_NAME"
 gh_var BUDGET_START_DATE     "$BUDGET_START_DATE"
+gh_var SQL_AAD_ADMIN_GROUP_OBJECT_ID "$SQL_ADMIN_GROUP_OID"
+gh_var SQL_AAD_ADMIN_GROUP_NAME      "$SQL_ADMIN_GROUP"
 # Alert email is PII -> a masked secret, not a variable. Remove any prior variable.
 gh variable delete ALERT_EMAILS_JSON -R "$GITHUB_REPO" 2>/dev/null || true
 gh secret set ALERT_EMAILS_JSON -R "$GITHUB_REPO" -b "[\"${ALERT_EMAIL}\"]"
@@ -228,6 +247,8 @@ Bootstrap complete. Recorded to GitHub repo variables:
   AZURE_DEPLOY_CLIENT_ID = $DEPLOY_CLIENT_ID
   TFSTATE_STORAGE_ACCOUNT= $TFSTATE_SA
   ACR_NAME               = $ACR_NAME
+  SQL_AAD_ADMIN_GROUP_OBJECT_ID = $SQL_ADMIN_GROUP_OID
+  SQL_AAD_ADMIN_GROUP_NAME      = $SQL_ADMIN_GROUP
 
 MANUAL steps still required (see docs/deployment/README.md):
   1. In GitHub: add yourself as a required reviewer on the 'infra' and
@@ -240,5 +261,11 @@ MANUAL steps still required (see docs/deployment/README.md):
        az acr config authentication-as-arm update -n $ACR_NAME --status enabled
   4. Set 'acr_name' in infra/terraform/environments/shared to: $ACR_NAME
      (or rely on the TF_VAR_acr_name repo variable — already set).
+  5. Before enabling RSVP DB migrations (issue #62), grant the deploy identity
+     ($DEPLOY_CLIENT_ID) SQL firewall-rule write on the staging + production SQL
+     servers so the migrate job can open/close its runner IP, e.g.:
+       az role assignment create --assignee "$DEPLOY_CLIENT_ID" \\
+         --role "SQL Server Contributor" -g rg-czw-staging
+     (repeat for rg-czw-production). Not needed until migrations go live.
 =================================================================
 EOF
