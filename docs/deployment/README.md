@@ -261,7 +261,9 @@ variable **`ADMIN_EMAIL_ALLOWLIST`** (comma-separated emails), set by hand.
 
 `deploy.yml` runs `prisma migrate deploy` against each env's DB before promoting
 the image. The step is **inert until the Prisma schema lands** (it early-exits
-when `prisma/schema.prisma` is absent). When migrations go live, the deploy
+when `prisma/schema.prisma` is absent). To activate it, issue #62 must add
+`actions/setup-node` + `npm ci` to the deploy job and create
+`scripts/ensure-db-user.mjs` + the `db:migrate:deploy` npm script. The deploy
 identity also needs **SQL firewall-rule write** on the staging + production SQL
 servers (the migrate job opens/closes its runner IP) — see manual step 5 in the
 bootstrap output.

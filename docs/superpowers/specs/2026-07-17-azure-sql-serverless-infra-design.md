@@ -132,11 +132,13 @@ Each migrate step:
 4. `npx prisma migrate deploy`.
 5. Remove the temporary firewall rule (always, even on failure).
 
-**Guarded on `prisma/schema.prisma` existence.** Until #62 adds the schema, the
-job is a no-op (`if [ -f prisma/schema.prisma ]`), so CI stays green. The grant
-+ migrate activate automatically when #62 lands — no `deploy.yml` change needed
-then. `deploy.yml` currently ignores `infra/terraform/**` and `docs/**` path
-pushes; that is unchanged.
+**Guarded on `prisma/schema.prisma` existence.** The deploy job checks out the
+repo, so until #62 adds the schema the guard (`if [ -f prisma/schema.prisma ]`)
+early-exits and CI stays green. When #62 lands it must add `actions/setup-node`
+(from `.nvmrc`) + `npm ci` to the deploy job and create
+`scripts/ensure-db-user.mjs` + the `db:migrate:deploy` npm script; the guard then
+passes and the grant + migrate run. `deploy.yml` currently ignores
+`infra/terraform/**` and `docs/**` path pushes; that is unchanged.
 
 ### 5. Bootstrap / operational prerequisites (Owner-run, not CI — documented only)
 

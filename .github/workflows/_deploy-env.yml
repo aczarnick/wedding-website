@@ -41,6 +41,10 @@ jobs:
     env:
       SMOKE_STRING: "October 10, 2026"
     steps:
+      # Needed so the migrate step below can see prisma/schema.prisma; deploy
+      # itself is repo-free (pure az CLI), but the migration guard reads the tree.
+      - uses: actions/checkout@v7
+
       - uses: azure/login@v3
         with:
           client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
@@ -57,6 +61,8 @@ jobs:
       # against this env's DB before the new image goes live, so schema never lags
       # the code. Passwordless: az is logged in as the AAD admin (the deploy SP is
       # a member of czw-sql-admins), so DefaultAzureCredential resolves via the CLI.
+      # #62 must also add `actions/setup-node` (from .nvmrc) + `npm ci` above this
+      # step so `node` and `npm run` have the toolchain and dependencies.
       - name: Run database migrations
         run: |
           set -euo pipefail
