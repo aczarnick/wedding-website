@@ -52,6 +52,39 @@ jobs:
           az containerapp show -g "${{ inputs.resource_group }}" -n "${{ inputs.app_name }}" -o none \
             || { echo "::error::Container App ${{ inputs.app_name }} not found — run the Infra workflow first."; exit 1; }
 
+      # Inert until issue #62 adds prisma/schema.prisma (and the referenced
+      # scripts/ensure-db-user.mjs + db:migrate:deploy npm script). Runs migrations
+      # against this env's DB before the new image goes live, so schema never lags
+      # the code. Passwordless: az is logged in as the AAD admin (the deploy SP is
+      # a member of czw-sql-admins), so DefaultAzureCredential resolves via the CLI.
+      - name: Run database migrations
+        run: |
+          set -euo pipefail
+          if [ ! -f prisma/schema.prisma ]; then
+            echo "No prisma/schema.prisma yet — skipping migrations (inert until issue #62)."
+            exit 0
+          fi
+
+          ENV_SUFFIX="${{ inputs.resource_group }}"; ENV_SUFFIX="${ENV_SUFFIX#rg-czw-}"
+          SERVER="sql-czw-${ENV_SUFFIX}"
+          APP_IDENTITY="id-czw-app-${ENV_SUFFIX}"
+          RG="${{ inputs.resource_group }}"
+
+          # Open the SQL firewall to this runner for the duration of the job.
+          RUNNER_IP=$(curl -fsS https://api.ipify.org)
+          RULE="ci-migrate-${GITHUB_RUN_ID}"
+          az sql server firewall-rule create -g "$RG" -s "$SERVER" -n "$RULE" \
+            --start-ip-address "$RUNNER_IP" --end-ip-address "$RUNNER_IP" -o none
+          trap 'az sql server firewall-rule delete -g "$RG" -s "$SERVER" -n "$RULE" -o none || true' EXIT
+
+          export DATABASE_URL="sqlserver://${SERVER}.database.windows.net:1433;database=rsvp;authentication=DefaultAzureCredential;encrypt=true"
+
+          # Idempotently grant the app's managed identity DB access, then migrate.
+          node scripts/ensure-db-user.mjs "$APP_IDENTITY"
+          npm run --silent db:migrate:deploy
+        env:
+          NODE_ENV: production
+
       - name: Deploy image
         run: az containerapp update -g "${{ inputs.resource_group }}" -n "${{ inputs.app_name }}" --image "${{ inputs.image }}" -o none
 
