@@ -84,15 +84,35 @@ Classify the issue to right-size planning:
   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`. Present the plan and
   wait for approval.
 
+**Grounding (either size):** when the plan hinges on an external fact — a library
+version, an API shape, a platform limit — do **not** pull raw docs (web search,
+context7, MCP) into this context. Dispatch a research subagent (a cheaper model is
+fine) with the specific question; have it return a short **decision memo** (the
+answer + the source URL) and discard the raw pages. Un-delegated research is a
+large, silent context cost.
+
 **Do not proceed to implementation until the user approves the plan.**
 
 ## Phase 5 — Implement (autonomous)
 
-Build the change in the worktree per the approved plan. Follow `AGENTS.md`
+Build the change in the worktree per the approved plan, following `AGENTS.md`
 conventions (Tailwind-only, `@/` alias, data in `src/constants/*`, client/server
-boundary rules). Where a test surface exists, use
-`superpowers:test-driven-development`; this repo is largely test-free, so most
-work is direct implementation validated by the gate below.
+boundary rules).
+
+**Delegate by size — the main lever for token spend and speed:**
+
+- **Small** → implement **inline**. A single-file mechanical change is not worth a
+  subagent's cold start (a fresh subagent re-derives context you already hold).
+- **Large** → run the approved plan via `superpowers:subagent-driven-development`:
+  one subagent per plan task on a cheaper model (e.g. Sonnet), review the returned
+  diff between tasks, and keep only **task summaries + diffs** in this context — not
+  the whole working set. The plan's per-task `Consumes`/`Produces` interface blocks
+  exist precisely so a cold subagent can execute one task in isolation. The
+  orchestrator stays on the stronger model and only reviews.
+
+Where a test surface exists, have the implementing agent use
+`superpowers:test-driven-development`. One task in flight at a time; a task is done
+only when its slice of the gate is green.
 
 ## Phase 6 — Verify (autonomous)
 
@@ -114,7 +134,8 @@ rendered behavior.
 The heavy **CI-parity check** — `docker build` (or `podman build`; see
 `LEARNINGS.md`) — is slow (image pull + `npm ci` + build) and its output is large.
 Run it **once**, at the end (Phase 7, after review, before pushing) — never after
-every change.
+every change. Delegating it to a verify subagent that returns only pass/fail plus
+any failing lines keeps its large output out of the orchestrator.
 
 ## Phase 7 — Code review (autonomous)
 
@@ -181,6 +202,10 @@ When the verify gate (Phase 6/7) or code review fails:
 
 ## Notes
 
+- The orchestrator runs on the stronger model and mostly **reviews**; push the
+  grunt work — research grounding, per-task implementation, heavy verification — to
+  cheaper-model subagents, and keep only their memos, diffs, and pass/fail in this
+  context. Delegation earns its cold-start cost on **Large** issues, not Small ones.
 - One issue in flight at a time; finish and verify before starting another.
 - Never skip the plan-approval or PR checkpoints, even for trivial issues.
 - Keep the branch/worktree/PR naming consistent: `issue-<n>-<slug>` throughout.
