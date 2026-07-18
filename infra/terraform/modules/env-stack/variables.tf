@@ -90,3 +90,36 @@ variable "origin_private_key_pem" {
   description = "Origin CA private key (PEM), from the shared stack."
   sensitive   = true
 }
+
+variable "sql_admin_group_name" {
+  type        = string
+  description = "Display name of the Entra group set as the SQL server AAD admin (contains human admins + the CI deploy SP)."
+}
+
+variable "sql_admin_group_object_id" {
+  type        = string
+  description = "Object ID of the SQL admin Entra group."
+}
+
+variable "tenant_id" {
+  type        = string
+  description = "Entra tenant ID."
+}
+
+variable "db_auto_pause_delay_in_minutes" {
+  type        = number
+  description = "Serverless auto-pause delay. 60 for staging (pause when idle); -1 for production (stay warm)."
+}
+
+variable "google_client_id" {
+  type        = string
+  description = "Google OAuth client ID for Auth.js. Empty until issue #63 supplies it."
+  default     = ""
+}
+
+variable "google_client_secret" {
+  type        = string
+  description = "Google OAuth client secret for Auth.js. Empty until issue #63 supplies it."
+  default     = ""
+  sensitive   = true
+}
