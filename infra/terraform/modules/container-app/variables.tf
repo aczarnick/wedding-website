@@ -79,3 +79,36 @@ variable "tags" {
   description = "Resource tags."
   default     = {}
 }
+
+variable "additional_identity_ids" {
+  type        = list(string)
+  description = "Extra user-assigned identity IDs to attach (e.g. the app's DB identity), merged with the AcrPull identity."
+  default     = []
+}
+
+variable "extra_env" {
+  type = list(object({
+    name  = string
+    value = string
+  }))
+  description = "Plain (non-secret) environment variables appended to the container."
+  default     = []
+}
+
+variable "secrets" {
+  type = list(object({
+    name  = string
+    value = string
+  }))
+  description = "Container App secrets. Empty-valued entries must be filtered out by the caller (ACA rejects empty secret values)."
+  default     = []
+}
+
+variable "secret_env" {
+  type = list(object({
+    name        = string
+    secret_name = string
+  }))
+  description = "Environment variables that reference a secret by name (secret_ref)."
+  default     = []
+}

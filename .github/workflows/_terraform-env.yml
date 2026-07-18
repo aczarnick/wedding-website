@@ -46,6 +46,14 @@ jobs:
       # Origin lock lives in a repo variable, not a gitignored tfvars, so the
       # pipeline never reverts it. Defaults to [] (open) until you set it.
       TF_VAR_allowed_ip_ranges: ${{ vars.ALLOWED_IP_RANGES_JSON || '[]' }}
+      # SQL server AAD admin (the czw-sql-admins Entra group). Set by object ID so
+      # the RG-Contributor infra identity needs no directory permission.
+      TF_VAR_sql_admin_group_object_id: ${{ vars.SQL_AAD_ADMIN_GROUP_OBJECT_ID }}
+      TF_VAR_sql_admin_group_name: ${{ vars.SQL_AAD_ADMIN_GROUP_NAME }}
+      TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+      # Empty until issue #63 registers the OAuth app and sets these secrets.
+      TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID || '' }}
+      TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET || '' }}
       # Cloudflare provider auth — a single zone-scoped API token; required
       # scopes documented in docs/deployment/README.md (Custom domains).
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

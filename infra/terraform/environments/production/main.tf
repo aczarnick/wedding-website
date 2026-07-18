@@ -29,4 +29,11 @@ module "stack" {
   monthly_budget_amount      = var.monthly_budget_amount
   budget_start_date          = var.budget_start_date
   tags                       = var.tags
+
+  sql_admin_group_name           = var.sql_admin_group_name
+  sql_admin_group_object_id      = var.sql_admin_group_object_id
+  tenant_id                      = var.tenant_id
+  db_auto_pause_delay_in_minutes = -1
+  google_client_id               = var.google_client_id
+  google_client_secret           = var.google_client_secret
 }

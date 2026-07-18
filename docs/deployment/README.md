@@ -219,12 +219,63 @@ az group delete -n rg-czw-identity -y
 az group delete -n rg-czw-tfstate  -y
 ```
 
-## Future: RSVP API + database
+## RSVP database (Azure SQL)
 
-The environments are Workload-Profiles (v2), so you can add a second Container
-App (the API) into the same environment and attach an Azure Database for
-PostgreSQL (Flexible Server, burstable B1ms is the cheap tier) with private
-networking. Add its Terraform to the `env-stack` module and wire connection
-settings through Container App secrets — do **not** put secrets in `.tfvars`
-(state holds them in cleartext; the state account is AAD-locked but treat it
-accordingly).
+The RSVP feature uses an **Azure SQL logical server + one serverless database
+(`rsvp`) per environment**, provisioned by the `sql-database` module inside
+`env-stack`. No new compute: the existing Container App reaches it.
+
+**Passwordless by design.** The server is **AAD-only**
+(`azuread_authentication_only = true`) — no SQL login/password exists anywhere.
+The app connects with its per-env user-assigned identity
+(`id-czw-app-<env>`) via `authentication=ActiveDirectoryManagedIdentity`; there
+is no secret in state or in Container App config. Because no password login
+exists, the public endpoint is not anonymously usable — every connection needs a
+valid Entra token from an authorised principal.
+
+**Cost:** staging auto-pauses after 60 min idle (~$5/mo storage floor);
+production runs warm (auto-pause disabled, min 0.5 vCore) to avoid a first-query
+resume delay (~$15–30/mo). This is a deliberate trade against the "~$5/mo idle
+floor" — consistent with production's warm `min_replicas = 1` policy.
+
+### Prerequisites (set by `bootstrap-azure.sh`)
+
+- Entra group **`czw-sql-admins`** is the server's AAD admin. It must contain the
+  human admin(s) and the **deploy** identity (so CI migrations authenticate as
+  admin via OIDC). Creating the group needs a directory role (e.g. Groups
+  Administrator); if bootstrap can't create it, make it by hand.
+- Repo variables **`SQL_AAD_ADMIN_GROUP_OBJECT_ID`** and
+  **`SQL_AAD_ADMIN_GROUP_NAME`** (Terraform sets the AAD admin by object id, so
+  the RG-Contributor infra identity needs no directory permission). These must
+  exist **before** the first `infra` apply or the plan fails on an unset var.
+
+### Auth.js secret plumbing (scaffolded here, filled by the auth issue)
+
+Terraform generates `AUTH_SECRET` and wires the Container App env. The Google
+OAuth secrets (`google-client-id` / `google-client-secret`) are defined but
+**empty** — supplied later via the `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+GitHub secrets once the OAuth app exists. The admin allowlist is a GitHub repo
+variable **`ADMIN_EMAIL_ALLOWLIST`** (comma-separated emails), set by hand.
+
+### Migrations
+
+`deploy.yml` runs `prisma migrate deploy` against each env's DB before promoting
+the image, so schema never lags the code. The full path is wired
+(`scripts/ensure-db-user.mjs` grants the app identity least-privilege
+read/write; `db:migrate:deploy` applies migrations), but it is **gated on the
+`ENABLE_DB_MIGRATIONS` repo variable** and off by default — a deploy with it
+unset is pure `az` CLI, exactly as before.
+
+**Turning migrations on** (once, after the first `staging` apply creates the
+server):
+
+```bash
+gh variable set ENABLE_DB_MIGRATIONS --body true
+```
+
+`bootstrap-azure.sh` has already granted the deploy identity `SQL Server
+Contributor` on the app RGs (to open/close a transient firewall rule for the
+runner IP — GitHub runners aren't "Azure services") and added it to
+`czw-sql-admins` (to authenticate as the AAD admin). The migrate job authenticates
+passwordlessly via the runner's `az login` session. Migrations run per env in the
+promote order: staging → (approval) → production.

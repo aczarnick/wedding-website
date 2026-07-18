@@ -62,3 +62,31 @@ variable "custom_domains" {
   description = "Public hostnames bound to the production app (behind the Cloudflare proxy)."
   default     = ["czarnickwedding.com", "www.czarnickwedding.com"]
 }
+
+variable "sql_admin_group_name" {
+  type        = string
+  description = "Display name of the Entra group set as the SQL server AAD admin."
+}
+
+variable "sql_admin_group_object_id" {
+  type        = string
+  description = "Object ID of the SQL admin Entra group."
+}
+
+variable "tenant_id" {
+  type        = string
+  description = "Entra tenant ID."
+}
+
+variable "google_client_id" {
+  type        = string
+  description = "Google OAuth client ID for Auth.js. Empty until issue #63."
+  default     = ""
+}
+
+variable "google_client_secret" {
+  type        = string
+  description = "Google OAuth client secret for Auth.js. Empty until issue #63."
+  default     = ""
+  sensitive   = true
+}
