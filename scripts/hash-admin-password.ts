@@ -1,14 +1,37 @@
 import { createInterface } from 'node:readline';
+import { Writable } from 'node:stream';
 import { hashPassword } from '../src/lib/auth/scrypt';
 
 const MINIMUM_PASSWORD_LENGTH = 12;
+
+// readline echoes every keystroke to its `output` stream whenever `terminal:
+// true` (the mode required for the async-iterator protocol used below to
+// work on a real TTY). To keep the password from being echoed, readline is
+// given this muted stream instead of `process.stdout` — it discards writes
+// while `muted` is true, so readline itself can never print what's typed.
+// The question text is written directly to `process.stdout` beforehand so
+// the prompt still appears.
+class MutableOutput extends Writable {
+  muted = false;
+
+  _write(chunk: unknown, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+    if (!this.muted) {
+      process.stdout.write(chunk as string | Buffer, encoding);
+    }
+    callback();
+  }
+}
 
 // The readline interface is consumed once via its async-iterator protocol and
 // shared across both prompts. Calling `rl.question()` a second time on the
 // same interface is unreliable here: piped input (as used by the round-trip
 // verification below) can arrive as a single chunk containing both lines, and
 // the async-iterator reads them one at a time without that race.
-function promptSilently(lines: AsyncIterator<string>, question: string): Promise<string> {
+function promptSilently(
+  lines: AsyncIterator<string>,
+  mutableOutput: MutableOutput,
+  question: string,
+): Promise<string> {
   return new Promise((resolve) => {
     const onData = (chunk: Buffer) => {
       const char = chunk.toString();
@@ -16,14 +39,18 @@ function promptSilently(lines: AsyncIterator<string>, question: string): Promise
         process.stdin.removeListener('data', onData);
         return;
       }
-      process.stdout.write('*');
+      if (process.stdin.isTTY) {
+        process.stdout.write('*');
+      }
     };
 
     process.stdout.write(question);
+    mutableOutput.muted = true;
     process.stdin.on('data', onData);
 
     void lines.next().then(({ value }) => {
       process.stdin.removeListener('data', onData);
+      mutableOutput.muted = false;
       process.stdout.write('\n');
       resolve(value ?? '');
     });
@@ -31,10 +58,11 @@ function promptSilently(lines: AsyncIterator<string>, question: string): Promise
 }
 
 async function main() {
-  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  const mutableOutput = new MutableOutput();
+  const rl = createInterface({ input: process.stdin, output: mutableOutput, terminal: true });
   const lines = rl[Symbol.asyncIterator]();
 
-  const password = await promptSilently(lines, 'Admin password: ');
+  const password = await promptSilently(lines, mutableOutput, 'Admin password: ');
 
   if (password.length < MINIMUM_PASSWORD_LENGTH) {
     console.error(`Refusing to hash a password shorter than ${MINIMUM_PASSWORD_LENGTH} characters.`);
@@ -42,7 +70,7 @@ async function main() {
     process.exit(1);
   }
 
-  const confirmation = await promptSilently(lines, 'Confirm password: ');
+  const confirmation = await promptSilently(lines, mutableOutput, 'Confirm password: ');
   rl.close();
 
   if (confirmation !== password) {

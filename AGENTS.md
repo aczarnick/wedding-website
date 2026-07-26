@@ -10,7 +10,7 @@ This file provides guidance to AI coding agents (Claude Code, Copilot, etc.) wor
 - `npm run start` — run production build
 - `npm run check:images` — fails if any file under `public/images` exceeds size/dimension thresholds (`scripts/check-image-sizes.mjs`); CI-enforced
 
-There is no test suite. Validate app changes with `npm run build`, `npm run lint`, and `npm run check:images`.
+Validate app changes with `npm test` (Vitest, CI-enforced), `npm run build`, `npm run lint`, and `npm run check:images`.
 
 For changes under `infra/terraform/`, CI additionally enforces `terraform fmt -check -recursive infra/terraform` and, per environment, `terraform -chdir=infra/terraform/environments/<env> init -backend=false && terraform validate`. Workflow file changes are checked with `actionlint`.
 
