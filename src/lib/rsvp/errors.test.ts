@@ -45,5 +45,17 @@ describe('invalidRequest', () => {
     expect(error.status).toBe(400);
     expect(error.code).toBe('invalid_request');
     expect(error.message).toBe('Too short');
+    expect(error.details).toEqual({ fieldErrors: { name: ['Too short'] } });
+  });
+
+  it('omits fieldErrors when the failure is not field-scoped', async () => {
+    const schema = z.string().refine(() => false, { message: 'Enter a first and last name' });
+    const parsed = schema.safeParse('Smith');
+    if (parsed.success) throw new Error('expected a parse failure');
+
+    const error = invalidRequest(parsed.error);
+
+    expect(error.message).toBe('Enter a first and last name');
+    expect(error.details).toEqual({});
   });
 });

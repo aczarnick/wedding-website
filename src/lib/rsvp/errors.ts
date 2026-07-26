@@ -48,6 +48,7 @@ export function errorResponse(error: unknown): Response {
 export function invalidRequest(error: ZodError): RsvpError {
   const { formErrors, fieldErrors } = z.flattenError(error);
   const message = formErrors[0] ?? Object.values(fieldErrors).flat()[0] ?? 'Invalid request';
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
-  return new RsvpError(400, 'invalid_request', message, { fieldErrors });
+  return new RsvpError(400, 'invalid_request', message, hasFieldErrors ? { fieldErrors } : {});
 }

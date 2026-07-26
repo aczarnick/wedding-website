@@ -229,7 +229,7 @@ describe.skipIf(!databaseUrl)('guest API services', () => {
       ).rejects.toMatchObject({ status: 409, code: 'add_guest_cap_exceeded' });
 
       const untouched = await prisma.party.findUniqueOrThrow({ where: { id: party.id } });
-      expect(untouched.message).not.toBe('should not persist');
+      expect(untouched.message).toBe(party.message);
       expect(await prisma.guest.count({ where: { partyId: party.id } })).toBe(party.guests.length);
       expect(await prisma.auditEntry.count({ where: { partyId: party.id } })).toBe(0);
     });

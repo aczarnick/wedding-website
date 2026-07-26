@@ -10,6 +10,7 @@ import {
   nameSplitCandidates,
   toPartySnapshot,
 } from '@/lib/rsvp/policy';
+import type { SnapshotGuest } from '@/lib/rsvp/policy';
 import type { SubmitRsvpInput } from '@/lib/rsvp/schemas';
 
 export const GUEST_ORDER: Prisma.GuestOrderByWithRelationInput[] = [
@@ -91,6 +92,47 @@ export async function searchParties(
   }));
 }
 
+interface PartyRecord {
+  id: string;
+  displayName: string;
+  addGuestCap: number;
+}
+
+interface GuestRecord extends PartyDetailGuest {
+  flaggedForReview: boolean;
+}
+
+/**
+ * Projects a party and its guests into the response shape, deriving the
+ * remaining add-guest allowance and dropping the admin-only moderation flag.
+ * Both read and submit return through here so the two can never drift.
+ */
+function toPartyDetail(
+  party: PartyRecord,
+  guests: readonly GuestRecord[],
+  message: string | null,
+  deadline: Date,
+): PartyDetail {
+  const allowance = checkAddGuestAllowance(party.addGuestCap, countAddedGuests(guests), 0);
+
+  return {
+    id: party.id,
+    displayName: party.displayName,
+    message,
+    addGuestCap: party.addGuestCap,
+    addedGuestsRemaining: allowance.remaining,
+    rsvpDeadline: deadline.toISOString(),
+    guests: guests.map((guest) => ({
+      id: guest.id,
+      firstName: guest.firstName,
+      lastName: guest.lastName,
+      rsvpStatus: guest.rsvpStatus,
+      songRequest: guest.songRequest,
+      source: guest.source,
+    })),
+  };
+}
+
 /** Loads a party and its guests, omitting the admin-only moderation flag. */
 export async function getPartyDetail(
   client: PrismaClient,
@@ -110,24 +152,7 @@ export async function getPartyDetail(
     throw new RsvpError(404, 'party_not_found', 'Party not found');
   }
 
-  const allowance = checkAddGuestAllowance(party.addGuestCap, countAddedGuests(party.guests), 0);
-
-  return {
-    id: party.id,
-    displayName: party.displayName,
-    message: party.message,
-    addGuestCap: party.addGuestCap,
-    addedGuestsRemaining: allowance.remaining,
-    rsvpDeadline: deadline.toISOString(),
-    guests: party.guests.map((guest) => ({
-      id: guest.id,
-      firstName: guest.firstName,
-      lastName: guest.lastName,
-      rsvpStatus: guest.rsvpStatus,
-      songRequest: guest.songRequest,
-      source: guest.source,
-    })),
-  };
+  return toPartyDetail(party, party.guests, party.message, deadline);
 }
 
 /**
@@ -202,7 +227,7 @@ export async function submitRsvp(
       });
     }
 
-    const addedGuestIds: string[] = [];
+    const addedGuests: SnapshotGuest[] = [];
 
     for (const newGuest of input.newGuests) {
       const created = await tx.guest.create({
@@ -217,7 +242,7 @@ export async function submitRsvp(
         },
       });
 
-      addedGuestIds.push(created.id);
+      addedGuests.push(created);
     }
 
     const guestsAfter = await tx.guest.findMany({ where: { partyId }, orderBy: GUEST_ORDER });
@@ -234,52 +259,25 @@ export async function submitRsvp(
       },
     });
 
-    for (const guestId of addedGuestIds) {
-      const added = guestsAfter.find((guest) => guest.id === guestId);
-
+    for (const added of addedGuests) {
       await tx.auditEntry.create({
         data: {
           partyId,
-          guestId,
+          guestId: added.id,
           action: AUDIT_ACTION.guestAdded,
           actorType: ACTOR_TYPE.guest,
-          after: JSON.stringify(
-            added
-              ? {
-                  id: added.id,
-                  firstName: added.firstName,
-                  lastName: added.lastName,
-                  rsvpStatus: added.rsvpStatus,
-                  songRequest: added.songRequest,
-                }
-              : { id: guestId },
-          ),
+          after: JSON.stringify({
+            id: added.id,
+            firstName: added.firstName,
+            lastName: added.lastName,
+            rsvpStatus: added.rsvpStatus,
+            songRequest: added.songRequest,
+          }),
           ipAddress,
         },
       });
     }
 
-    const updatedAllowance = checkAddGuestAllowance(
-      party.addGuestCap,
-      countAddedGuests(guestsAfter),
-      0,
-    );
-
-    return {
-      id: party.id,
-      displayName: party.displayName,
-      message: input.message,
-      addGuestCap: party.addGuestCap,
-      addedGuestsRemaining: updatedAllowance.remaining,
-      rsvpDeadline: deadline.toISOString(),
-      guests: guestsAfter.map((guest) => ({
-        id: guest.id,
-        firstName: guest.firstName,
-        lastName: guest.lastName,
-        rsvpStatus: guest.rsvpStatus,
-        songRequest: guest.songRequest,
-        source: guest.source,
-      })),
-    };
+    return toPartyDetail(party, guestsAfter, input.message, deadline);
   });
 }
