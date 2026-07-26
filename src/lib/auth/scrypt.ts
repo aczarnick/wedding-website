@@ -1,7 +1,16 @@
-import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { randomBytes, scrypt, timingSafeEqual, type BinaryLike, type ScryptOptions } from 'node:crypto';
 import { promisify } from 'node:util';
 
-const scryptAsync = promisify(scrypt);
+// `scrypt` is overloaded (with/without an options object); TypeScript's
+// generic `promisify` resolves only the first (no-options) overload, even
+// though the options-accepting call works correctly at runtime. Assert the
+// precise signature Node actually implements rather than widening to `any`.
+const scryptAsync = promisify(scrypt) as (
+  password: BinaryLike,
+  salt: BinaryLike,
+  keylen: number,
+  options: ScryptOptions,
+) => Promise<Buffer>;
 
 const ALGORITHM = 'scrypt';
 const FIELD_SEPARATOR = '$';
