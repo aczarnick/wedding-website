@@ -69,8 +69,10 @@ describe('submitRsvpSchema', () => {
   });
 
   it('turns an omitted message into null', () => {
-    const { message: _omitted, ...rest } = validSubmission();
-    const result = submitRsvpSchema.safeParse(rest);
+    const result = submitRsvpSchema.safeParse({
+      guests: validSubmission().guests,
+      newGuests: [],
+    });
 
     expect(result.success && result.data.message).toBe(null);
   });
@@ -109,8 +111,10 @@ describe('submitRsvpSchema', () => {
   });
 
   it('defaults newGuests to an empty array', () => {
-    const { newGuests: _omitted, ...rest } = validSubmission();
-    const result = submitRsvpSchema.safeParse(rest);
+    const result = submitRsvpSchema.safeParse({
+      message: null,
+      guests: validSubmission().guests,
+    });
 
     expect(result.success && result.data.newGuests).toEqual([]);
   });
