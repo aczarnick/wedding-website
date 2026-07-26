@@ -17,7 +17,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "auth:hash": "tsx scripts/hash-admin-password.ts"
   },
   "dependencies": {
     "@prisma/adapter-mssql": "^7.8.0",

@@ -22,7 +22,7 @@ App on Azure; the only new cloud resource is an Azure SQL serverless database.
 | RSVP granularity | Single yes/no for the whole wedding | Simpler model and UI; per-event headcount not needed. |
 | Collected data | Song request (per guest) + message to the couple (per party) | No dietary/meal capture in scope. |
 | Plus-ones / added guests | Anyone can add guests, soft cap ~5 per party + admin moderation | Preserves open UX while bounding worst-case headcount; added guests are flagged for admin review. |
-| Admin auth | Auth.js OAuth (Google/GitHub) + email allowlist | No password to store or rotate; standard Next.js pattern; secure for 1–2 admins. |
+| Admin auth | Local admin account (scrypt hash in env) + email allowlist | No external IdP to register and no redirect-URI management per environment; fully exercisable locally. Supersedes the original Auth.js OAuth choice — see `2026-07-25-admin-auth-design.md`. OAuth remains a drop-in: the allowlist is enforced in the `signIn` callback, which runs for every provider. |
 | Email | None — on-screen confirmation only | Admin dashboard is source of truth; email deferred as an optional, dependency-free follow-up. |
 | Guest-list seeding | CSV import + manual admin CRUD | Bulk initial load plus ongoing edits. |
 | Editing window | Editable until a configurable deadline, then read-only | Matches real wedding logistics; supports a hard headcount freeze. |
@@ -110,8 +110,7 @@ OAuth sign-in, email allowlist, middleware-protected routes. Surfaces:
 
 - Azure SQL server + serverless DB (auto-pause) per environment.
 - Firewall: allow-Azure + managed identity (or Key Vault connection string).
-- Auth.js secrets (OAuth client id/secret, `NEXTAUTH_SECRET`) via Container App
-  secrets / Key Vault; admin-email allowlist as a GitHub repo variable.
+- Admin auth secrets (`AUTH_SECRET`, `ADMIN_PASSWORD_HASH`) via Container App secrets / Key Vault; `ADMIN_EMAIL` — which doubles as the allowlist — as a GitHub repo variable.
 - Add a migration step to `deploy.yml` (`prisma migrate deploy`) before
   promoting the image.
 - Cost delta ≈ $5/mo idle floor — within existing guardrails.
