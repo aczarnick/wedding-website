@@ -8,8 +8,8 @@ Date: 2026-07-25
 Gate `/admin/*` pages and `/api/admin/*` route handlers behind an authenticated
 admin session. Authentication is a single local admin account whose scrypt
 password hash lives in an environment variable; authorization is an email
-allowlist applied to every sign-in. Sessions are JWTs issued by Auth.js — no
-database involvement.
+allowlist — today a single entry, `ADMIN_EMAIL` — applied to every sign-in.
+Sessions are JWTs issued by Auth.js — no database involvement.
 
 This issue ships the **mechanism only**. It creates no admin page (#68) and no
 admin API route (#65); it provides the session helper those issues consume.
@@ -23,7 +23,8 @@ admin API route (#65); it provides the session helper those issues consume.
 | Credential storage | `ADMIN_PASSWORD_HASH` env var / Container App secret | No schema change, no migration, and sign-in never touches Azure SQL — which is serverless with auto-pause, so a DB-backed login would pay a cold-start wake-up on the first sign-in after idle. |
 | Hash | scrypt via `node:crypto`, compared with `timingSafeEqual` | Stdlib. No new production dependency, and no native bindings to break the Alpine Docker build. |
 | Session | JWT, 8-hour `maxAge` | No adapter, so no DB dependency and no edge-runtime split-config problem. Eight hours suits an admin console. |
-| Allowlist source | `ADMIN_ALLOWED_EMAILS` env var | Satisfies the issue's "email allowlist gate"; stays correct for any future provider. |
+| Allowlist source | `ADMIN_EMAIL` env var, a single-entry list | One admin exists, so a second variable would only be a drift hazard — two values that must stay in sync, with a silent sign-in failure when they don't. The gate itself is real and enforced in the `signIn` callback; widening it to a comma-separated list is a one-line change when a second admin or provider arrives. |
+| Email storage | Plaintext, not hashed | An email is an identifier, not a secret. It sits in the same store as `AUTH_SECRET`, and anyone who can read it can forge a session JWT outright — so hashing defends against no reachable attacker, while costing the ability to audit who holds access and to check an OAuth-supplied address against a known list. Sign-in failures are indistinguishable between "unknown email" and "wrong password", so the address cannot be enumerated. |
 
 ### Deviation from the RSVP high-level design
 
@@ -45,18 +46,21 @@ Each unit below is independently testable and depends only on the environment.
 
 ### `src/lib/auth/allowlist.ts`
 
-`isAdminEmail(email: string): boolean`. Parses `ADMIN_ALLOWED_EMAILS`
-(comma-separated), trimming entries, dropping empties, comparing
-case-insensitively. An unset or empty allowlist denies everyone — failing
+`isAdminEmail(email: string): boolean`. Parses `ADMIN_EMAIL` as a
+comma-separated list — one entry today — trimming entries, dropping empties,
+comparing case-insensitively. An unset or empty value denies everyone — failing
 closed, never open.
+
+This module is the **only** reader of `ADMIN_EMAIL`, so the admin identity has a
+single source of truth.
 
 ### `src/lib/auth/credentials.ts`
 
 `verifyAdminCredentials(email: string, password: string): Promise<boolean>`.
-Reads `ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH`; re-derives scrypt using the salt
-and parameters embedded in the stored hash; compares with `timingSafeEqual`.
-Returns false for an unknown email, a bad password, or a malformed hash — the
-caller never learns which.
+Delegates the identity check to `isAdminEmail`, then re-derives scrypt against
+`ADMIN_PASSWORD_HASH` using the salt and parameters embedded in the stored hash
+and compares with `timingSafeEqual`. Returns false for an unknown email, a bad
+password, or a malformed hash — the caller never learns which.
 
 Hash format, self-describing so parameters can change without a migration:
 
@@ -107,9 +111,8 @@ enters shell history.
 |---|---|
 | `AUTH_SECRET` | JWT signing key. Required at request time. |
 | `AUTH_TRUST_HOST` | `true` — trust `X-Forwarded-*` behind Cloudflare → Container Apps. |
-| `ADMIN_EMAIL` | The local admin account's address. |
+| `ADMIN_EMAIL` | The admin account's address, and the allowlist. Comma-separated; one entry today. |
 | `ADMIN_PASSWORD_HASH` | scrypt hash, format above. |
-| `ADMIN_ALLOWED_EMAILS` | Comma-separated authorization allowlist. |
 
 **Every one of these is read lazily, inside the function that needs it — never
 at module top-level.** `src/proxy.ts` imports `src/auth.ts`, so a top-level
@@ -123,7 +126,7 @@ configuration therefore fails loudly on the first request instead of at import.
 
 - Missing or malformed `ADMIN_PASSWORD_HASH` → verification returns false and a
   descriptive error is logged server-side. Sign-in fails closed.
-- Missing `ADMIN_ALLOWED_EMAILS` → everyone denied.
+- Missing `ADMIN_EMAIL` → everyone denied.
 - Denied allowlist → Auth.js `AccessDenied`; the submitted address is not echoed
   back to the client.
 - No credential detail distinguishes "unknown email" from "wrong password".
@@ -158,3 +161,8 @@ Auth.js's built-in endpoints):
 - Terraform / Container App secrets, GitHub repo variables — deferred until
   `/admin` actually deploys.
 - Google or GitHub OAuth providers.
+- **Sign-in rate limiting / lockout.** scrypt makes each guess cost ~100ms, and
+  Cloudflare fronts the app, but nothing throttles repeated failed attempts.
+  This is the real defense against password guessing and needs a store for
+  attempt counts, so it is its own issue — filed as a follow-up and referenced
+  from this PR.
