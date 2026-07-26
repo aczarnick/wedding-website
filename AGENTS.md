@@ -50,6 +50,24 @@ Route handlers call `requireAdminSession()` from `src/lib/auth/session.ts`, whic
 
 All auth environment variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`) are read **inside functions, never at module top level** — `src/proxy.ts` imports `src/auth.ts`, so a top-level throw would break `next build` and `docker build`, neither of which has secrets.
 
+### RSVP guest API
+
+`/api/parties/*` is the public, unauthenticated guest surface: `GET /search?q=` (exact full-name lookup), `GET /:id`, and `PATCH /:id/rsvp` (transactional submit). It is deliberately **not** matched by `src/proxy.ts` — only `/admin/*` and `/api/admin/*` are gated.
+
+Logic is split so the rules are testable without a database: `src/lib/rsvp/policy.ts` holds pure functions (name splitting, deadline check, guest-set reconciliation, add-guest cap) whose tests run in CI; `src/lib/rsvp/parties.ts` owns the queries and the submit transaction and takes the Prisma client as an explicit argument, so the integration suite can pass its own. Route handlers only parse, call, and map `RsvpError` to a status via `errorResponse`. Errors always render as `{ error, code }`.
+
+All three endpoints return **403 `rsvp_closed`** once `Settings.rsvpDeadline` has passed — reads included. This supersedes the epic's "then read-only".
+
+A submit must declare the party's complete guest set; a set that no longer matches the database gets **409 `party_changed`** rather than having its edits silently dropped. `addGuestCap` counts only guests with `source = guest_added`. Guests can write `attending` and `declined` only — `pending` is a server-side initial state.
+
+`src/lib/prisma.ts` exports `getPrismaClient()`, not a client instance: `DATABASE_URL` is read inside the function so `next build` and `docker build`, which have no secrets, can import route handlers. Never move it back to module scope.
+
+Prisma's `mode: 'insensitive'` is PostgreSQL/MongoDB-only and errors on `sqlserver`. Case-insensitive matching comes from the database collation (`SQL_Latin1_General_CP1_CI_AS`).
+
+The database-integration tests under `test/db/` reset the same tables, so `vitest.config.ts` splits the suite into two projects and runs the `db` project with `fileParallelism: false`. Adding another DB test file to that directory is safe; putting one elsewhere would race.
+
+Design: `docs/superpowers/specs/2026-07-26-rsvp-guest-api-design.md`.
+
 ## Conventions
 
 - Tailwind utility classes only; no custom CSS components. Custom sage palette (`sage-50`…`sage-800`) and the Playfair Display font (`font-serif`) are defined in `src/app/globals.css` via `@theme inline`
