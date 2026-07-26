@@ -18,8 +18,12 @@ const SALT_BYTES = 16;
 const KEY_BYTES = 64;
 const DEFAULT_PARAMETERS = { cost: 16384, blockSize: 8, parallelization: 1 } as const;
 
-const MAX_COST = 2 ** 20;
-const MAX_BLOCK_SIZE = 64;
+// scrypt's working memory is approximately `SCRYPT_MEMORY_FACTOR * cost * blockSize`
+// bytes; bound that product directly rather than bounding cost and blockSize
+// independently, since either factor alone can be small while their product
+// still drives an unbounded allocation.
+const SCRYPT_MEMORY_FACTOR = 128;
+const MAX_MEMORY_BYTES = 256 * 1024 * 1024;
 const MAX_PARALLELIZATION = 16;
 
 type ScryptParameters = {
@@ -38,12 +42,12 @@ async function deriveKey(
   salt: Buffer,
   parameters: ScryptParameters,
 ): Promise<Buffer> {
-  return (await scryptAsync(password, salt, KEY_BYTES, {
+  return await scryptAsync(password, salt, KEY_BYTES, {
     N: parameters.cost,
     r: parameters.blockSize,
     p: parameters.parallelization,
-    maxmem: 256 * parameters.cost * parameters.blockSize,
-  })) as Buffer;
+    maxmem: MAX_MEMORY_BYTES,
+  });
 }
 
 function parseHash(stored: string): ParsedHash {
@@ -64,10 +68,9 @@ function parseHash(stored: string): ParsedHash {
   const hasValidParameters =
     Number.isInteger(parsed.cost) &&
     parsed.cost > 0 &&
-    parsed.cost <= MAX_COST &&
     Number.isInteger(parsed.blockSize) &&
     parsed.blockSize > 0 &&
-    parsed.blockSize <= MAX_BLOCK_SIZE &&
+    SCRYPT_MEMORY_FACTOR * parsed.cost * parsed.blockSize <= MAX_MEMORY_BYTES &&
     Number.isInteger(parsed.parallelization) &&
     parsed.parallelization > 0 &&
     parsed.parallelization <= MAX_PARALLELIZATION;

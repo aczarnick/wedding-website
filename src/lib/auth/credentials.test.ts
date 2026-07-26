@@ -110,4 +110,13 @@ describe('verifyAdminCredentials', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await expect(verifyAdminCredentials('admin@example.com', 'anything')).resolves.toBe(false);
   });
+
+  it('rejects a stored hash whose cost and blockSize are each individually small but whose implied working memory exceeds the ceiling', async () => {
+    vi.stubEnv('ADMIN_EMAIL', 'admin@example.com');
+    // cost 65536, blockSize 64: neither factor is absurd on its own, but
+    // 128 * 65536 * 64 = 512 MiB, twice the 256 MiB ceiling.
+    vi.stubEnv('ADMIN_PASSWORD_HASH', 'scrypt$65536$64$1$c2FsdA==$a2V5');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(verifyAdminCredentials('admin@example.com', 'anything')).resolves.toBe(false);
+  });
 });
