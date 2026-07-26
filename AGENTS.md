@@ -10,7 +10,7 @@ This file provides guidance to AI coding agents (Claude Code, Copilot, etc.) wor
 - `npm run start` — run production build
 - `npm run check:images` — fails if any file under `public/images` exceeds size/dimension thresholds (`scripts/check-image-sizes.mjs`); CI-enforced
 
-There is no test suite. Validate app changes with `npm run build`, `npm run lint`, and `npm run check:images`.
+Validate app changes with `npm test` (Vitest, CI-enforced), `npm run build`, `npm run lint`, and `npm run check:images`.
 
 For changes under `infra/terraform/`, CI additionally enforces `terraform fmt -check -recursive infra/terraform` and, per environment, `terraform -chdir=infra/terraform/environments/<env> init -backend=false && terraform validate`. Workflow file changes are checked with `actionlint`.
 
@@ -37,6 +37,18 @@ Adding a section: wrap content in a divider with an `id`, add that id string to 
 ### Client/server boundary
 
 `'use client'` only on components using state/hooks: `Header.tsx` (mobile drawer) and `HeroSection.tsx`. The countdown (`DaysUntilWedding()`) is deliberately computed client-side in a `useEffect` inside `HeroSection` — initial state is a non-breaking space — to avoid both hydration mismatches and a stale build-time value. Don't move it to the server or call it during render.
+
+### Admin auth
+
+`/admin/*` and `/api/admin/*` are gated by `src/proxy.ts` (Next.js 16's renamed `middleware.ts`), which wraps the Auth.js `auth()` function from `src/auth.ts` and matches on those two path prefixes. The matcher is case-sensitive, so any admin route added later must be lowercase to be covered.
+
+The proxy decides the response rather than deferring to Auth.js: an allowlisted session passes through, an unauthenticated or de-allowlisted request to `/api/admin/*` gets a JSON **401**, and the same request to a page path gets a **redirect** to the sign-in page. Returning the bare `auth` export instead would be a security bug — on its own it only attaches `req.auth` and lets every matched request through — and redirecting an API client to an HTML sign-in page would break any caller expecting JSON.
+
+`src/auth.ts` configures a single Auth.js Credentials provider backed by one local admin account: `authorize()` calls `verifyAdminCredentials()` (`src/lib/auth/credentials.ts`), which checks the submitted email against the allowlist and the submitted password against a scrypt hash in `ADMIN_PASSWORD_HASH`. The scrypt primitives (`hashPassword`, `verifyPassword`) live in `src/lib/auth/scrypt.ts`, separate from that admin-specific policy — `scrypt.ts` imports only `node:crypto`/`node:util`, so `scripts/hash-admin-password.ts` (`npm run auth:hash`) can import it directly via `tsx` without pulling in the rest of the app. The allowlist itself (`src/lib/auth/allowlist.ts`) is a single function, `isAdminEmail()`, and is the only reader of `ADMIN_EMAIL` — a comma-separated list, one entry today. It is enforced independently in the `signIn` callback in `auth.ts`, so it applies to any provider added later, not just Credentials. Sessions are JWTs (8-hour max age); no database is involved.
+
+Route handlers call `requireAdminSession()` from `src/lib/auth/session.ts`, which returns either the admin email or a ready-to-return 401/403 `Response` (401 unauthenticated, 403 authenticated but no longer allowlisted).
+
+All auth environment variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`) are read **inside functions, never at module top level** — `src/proxy.ts` imports `src/auth.ts`, so a top-level throw would break `next build` and `docker build`, neither of which has secrets.
 
 ## Conventions
 

@@ -16,6 +16,9 @@ updates:
       # eslint 10-compatible release. Drop once eslint-config-next supports eslint 10.
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
+      # next-auth is a pre-GA (beta) dependency; hold at chosen version until GA release.
+      - dependency-name: "next-auth"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
