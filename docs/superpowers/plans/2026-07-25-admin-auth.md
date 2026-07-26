@@ -449,13 +449,14 @@ import { verifyPassword } from '@/lib/auth/scrypt';
  * configuration — the caller cannot distinguish the cases.
  */
 export async function verifyAdminCredentials(email: string, password: string): Promise<boolean> {
-  if (!isAdminEmail(email)) {
-    return false;
-  }
+  const emailMatches = isAdminEmail(email);
+  const passwordMatches = await verifyPassword(password, process.env.ADMIN_PASSWORD_HASH ?? '');
 
-  return verifyPassword(password, process.env.ADMIN_PASSWORD_HASH ?? '');
+  return emailMatches && passwordMatches;
 }
 ```
+
+**Do not short-circuit on the email check.** Returning early when the email is unknown skips the ~100ms scrypt derivation, so an unknown address answers measurably faster than a known address with a wrong password — which leaks the admin address by timing. Always await the password work, then combine.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
