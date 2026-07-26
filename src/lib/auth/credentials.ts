@@ -7,9 +7,8 @@ import { verifyPassword } from '@/lib/auth/scrypt';
  * configuration — the caller cannot distinguish the cases.
  */
 export async function verifyAdminCredentials(email: string, password: string): Promise<boolean> {
-  if (!isAdminEmail(email)) {
-    return false;
-  }
+  const emailMatches = isAdminEmail(email);
+  const passwordMatches = await verifyPassword(password, process.env.ADMIN_PASSWORD_HASH ?? '');
 
-  return verifyPassword(password, process.env.ADMIN_PASSWORD_HASH ?? '');
+  return emailMatches && passwordMatches;
 }

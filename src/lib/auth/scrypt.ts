@@ -9,6 +9,10 @@ const SALT_BYTES = 16;
 const KEY_BYTES = 64;
 const DEFAULT_PARAMETERS = { cost: 16384, blockSize: 8, parallelization: 1 } as const;
 
+const MAX_COST = 2 ** 20;
+const MAX_BLOCK_SIZE = 64;
+const MAX_PARALLELIZATION = 16;
+
 type ScryptParameters = {
   cost: number;
   blockSize: number;
@@ -48,9 +52,16 @@ function parseHash(stored: string): ParsedHash {
     key: Buffer.from(key ?? '', 'base64'),
   };
 
-  const hasValidParameters = [parsed.cost, parsed.blockSize, parsed.parallelization].every(
-    (value) => Number.isInteger(value) && value > 0,
-  );
+  const hasValidParameters =
+    Number.isInteger(parsed.cost) &&
+    parsed.cost > 0 &&
+    parsed.cost <= MAX_COST &&
+    Number.isInteger(parsed.blockSize) &&
+    parsed.blockSize > 0 &&
+    parsed.blockSize <= MAX_BLOCK_SIZE &&
+    Number.isInteger(parsed.parallelization) &&
+    parsed.parallelization > 0 &&
+    parsed.parallelization <= MAX_PARALLELIZATION;
 
   if (!hasValidParameters || parsed.salt.length === 0 || parsed.key.length === 0) {
     throw new Error('Malformed password hash');

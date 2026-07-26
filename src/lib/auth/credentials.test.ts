@@ -103,4 +103,11 @@ describe('verifyAdminCredentials', () => {
     await configureAdmin('admin@example.com', 'correct horse battery staple');
     await expect(verifyAdminCredentials('admin@example.com', '')).resolves.toBe(false);
   });
+
+  it('rejects a stored hash with an absurd cost parameter without hanging or crashing', async () => {
+    vi.stubEnv('ADMIN_EMAIL', 'admin@example.com');
+    vi.stubEnv('ADMIN_PASSWORD_HASH', 'scrypt$1073741824$8$1$c2FsdA==$a2V5');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(verifyAdminCredentials('admin@example.com', 'anything')).resolves.toBe(false);
+  });
 });
