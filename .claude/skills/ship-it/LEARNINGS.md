@@ -22,6 +22,37 @@ Persistent facts about the current dev machine — not todos; Phase 0 reads thes
 Append a dated bullet when a run hits friction the skill didn't anticipate. Once a
 lesson is folded into `SKILL.md` (or captured as a machine quirk above), prune it.
 
+### 2026-07-25 — issue #63 (admin auth)
+
+- **A green fast gate does not prove a gate is closed.** Lint, 55 tests, and a
+  build that printed `ƒ Proxy (Middleware)` all passed while `/admin` was
+  reachable unauthenticated. Auth.js's `export { auth as proxy }` only attaches
+  `req.auth`; it denies nothing. Only driving the running app caught it. For any
+  issue whose deliverable is a *restriction*, Phase 6's browser step is the gate,
+  not a formality — assert the denial, not just the happy path.
+- **`npm ci` must be proven in the Linux image, not on the Mac.** `npm install`
+  here pruned `@emnapi/core`/`@emnapi/runtime` from the lockfile; local `npm ci`
+  and `npm ci --dry-run` both passed, and only `podman build` failed. When a run
+  adds a dependency, regenerate the lockfile inside the image
+  (`podman run --rm -v "$PWD":/app -w /app node:24-alpine npm install
+  --package-lock-only <pkg>`) rather than fixing it up afterwards. See personal
+  memory `npm-version-lockfile-mismatch`.
+- **Piping a command to `tail` discards its exit code.** `podman build ... | tail
+  -25` reported success on a failed build. Redirect to a file and check `$?`.
+- **Don't put `$` in any value destined for `.env`.** A `$`-separated hash
+  (`scrypt$16384$…`) was silently mangled by Next's env loader — `$16384` became
+  `$1` + `6384` — breaking every sign-in. The same trap waits in shell, Terraform,
+  and Container App secrets. Colons are safe and base64-compatible.
+- **Verify a subagent's "verified by inspection" claims.** An agent reported
+  password masking working based on reading the code; a real pty (`script -q
+  /dev/null`) showed the password echoing. Terminal echo happens in the driver
+  before Node sees input — only `setRawMode` suppresses it.
+- **Plan prose beats plan sample code.** The plan's Global Constraints forbade
+  revealing which half of a credential was wrong, while its own sample
+  `verifyAdminCredentials` returned early on an unknown email — a timing oracle.
+  When a reviewer flags plan-mandated code that contradicts a stated constraint,
+  the constraint governs; fix the code and the plan snippet.
+
 ### 2026-07-18 — issue #62 (RSVP data layer)
 
 All findings folded into `SKILL.md` (Phase 0 precheck, Phase 4 research memos,
