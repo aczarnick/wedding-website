@@ -46,6 +46,19 @@ describe('verifyPassword', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await expect(verifyPassword('anything', 'not-a-valid-hash')).resolves.toBe(false);
   });
+
+  it('never passes the stored hash value to console.error', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const secretLookingHash = 'this-value-has-no-colon-and-must-never-reach-a-log-line';
+
+    await verifyPassword('anything', secretLookingHash);
+
+    for (const call of consoleError.mock.calls) {
+      for (const arg of call) {
+        expect(String(arg)).not.toContain(secretLookingHash);
+      }
+    }
+  });
 });
 
 describe('verifyAdminCredentials', () => {

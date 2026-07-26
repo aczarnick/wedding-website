@@ -108,7 +108,13 @@ function promptFromPipedInput(lines: AsyncIterator<string>, question: string): P
   });
 }
 
-async function main() {
+const EXIT_SUCCESS = 0;
+const EXIT_VALIDATION_FAILURE = 1;
+
+// Returns an exit code rather than calling `process.exit` directly so the
+// `finally` block below always runs first and restores the terminal, no
+// matter which path (success or a validation failure) produced that code.
+async function main(): Promise<number> {
   const isTty = Boolean(process.stdin.isTTY);
   const ttyReader = isTty ? createTtyPasswordReader() : undefined;
   const rl = isTty ? undefined : createInterface({ input: process.stdin, terminal: false });
@@ -122,24 +128,30 @@ async function main() {
 
     if (password.length < MINIMUM_PASSWORD_LENGTH) {
       console.error(`Refusing to hash a password shorter than ${MINIMUM_PASSWORD_LENGTH} characters.`);
-      process.exit(1);
+      return EXIT_VALIDATION_FAILURE;
     }
 
     const confirmation = await prompt('Confirm password: ');
 
     if (confirmation !== password) {
       console.error('Passwords do not match.');
-      process.exit(1);
+      return EXIT_VALIDATION_FAILURE;
     }
 
     const hash = await hashPassword(password);
 
     console.log('\nAdd this line to .env (never commit it):\n');
     console.log(`ADMIN_PASSWORD_HASH="${hash}"`);
+    return EXIT_SUCCESS;
   } finally {
     ttyReader?.close();
     rl?.close();
   }
 }
 
-void main();
+main()
+  .then((exitCode) => process.exit(exitCode))
+  .catch((error: unknown) => {
+    console.error(error);
+    process.exit(EXIT_VALIDATION_FAILURE);
+  });

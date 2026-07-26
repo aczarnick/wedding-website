@@ -4,7 +4,7 @@ const auth = vi.hoisted(() => vi.fn((handler) => handler));
 
 vi.mock('@/auth', () => ({ auth }));
 
-import { proxy } from '@/proxy';
+import { config, proxy } from '@/proxy';
 
 type StubRequest = {
   auth: { user: { email: string } } | null;
@@ -16,6 +16,19 @@ function requestFor(pathname: string, email: string | null): StubRequest {
     auth: email === null ? null : { user: { email } },
     nextUrl: new URL(pathname, 'http://localhost:3000'),
   };
+}
+
+const TRAILING_WILDCARD_SEGMENT = /\/:[^/]+\*$/;
+
+function matcherPatternToRegExp(pattern: string): RegExp {
+  if (!TRAILING_WILDCARD_SEGMENT.test(pattern)) {
+    throw new Error(`Unsupported matcher pattern in test helper: ${pattern}`);
+  }
+
+  const literalPrefix = pattern.replace(TRAILING_WILDCARD_SEGMENT, '');
+  const escapedPrefix = literalPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  return new RegExp(`^${escapedPrefix}(?:/.*)?$`);
 }
 
 beforeEach(() => {
@@ -78,20 +91,41 @@ describe('proxy', () => {
     expect(location.pathname).toBe('/api/auth/signin');
   });
 
-  it('returns 401 for an admin API request when the session email was removed from the allowlist', async () => {
+  it('returns 403 (not a redirect) for an admin API request when the session email was removed from the allowlist', async () => {
     const request = requestFor('/api/admin/parties', 'removed@example.com');
 
     const response = await proxy(request as never);
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(403);
     expect(response.headers.get('location')).toBeNull();
   });
 
-  it('does not echo the rejected email address back in the 401 body', async () => {
+  it('does not echo the rejected email address back in the 403 body', async () => {
     const request = requestFor('/api/admin/parties', 'removed@example.com');
 
     const response = await proxy(request as never);
 
     await expect(response.text()).resolves.not.toContain('removed@example.com');
+  });
+});
+
+describe('config.matcher', () => {
+  it('covers exactly the admin page and admin API route families', () => {
+    expect(config.matcher).toEqual(['/admin/:path*', '/api/admin/:path*']);
+  });
+
+  it.each(['/admin', '/admin/guests', '/api/admin', '/api/admin/parties'])(
+    'matches %s',
+    (path) => {
+      const regexes = config.matcher.map(matcherPatternToRegExp);
+
+      expect(regexes.some((regex) => regex.test(path))).toBe(true);
+    },
+  );
+
+  it.each(['/', '/gallery', '/api/auth/session'])('does not match %s', (path) => {
+    const regexes = config.matcher.map(matcherPatternToRegExp);
+
+    expect(regexes.some((regex) => regex.test(path))).toBe(false);
   });
 });

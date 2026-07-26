@@ -54,7 +54,7 @@ function parseHash(stored: string): ParsedHash {
   const [algorithm, cost, blockSize, parallelization, salt, key] = stored.split(FIELD_SEPARATOR);
 
   if (algorithm !== ALGORITHM) {
-    throw new Error(`Unsupported password hash algorithm: ${algorithm}`);
+    throw new Error('Unsupported password hash algorithm');
   }
 
   const parsed: ParsedHash = {
