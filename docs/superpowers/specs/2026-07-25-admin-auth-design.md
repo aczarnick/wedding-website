@@ -91,9 +91,20 @@ on the next request rather than at token expiry.
 ### `src/proxy.ts`
 
 Next.js 16 renamed `middleware.ts` to `proxy.ts` (confirmed in this repo's
-`next@16.2.10`: `PROXY_LOCATION_REGEXP = (?:src/)?proxy`). Exports
-`{ auth as proxy }` with a matcher of `['/admin/:path*', '/api/admin/:path*']`.
-Unauthenticated page requests redirect to sign-in.
+`next@16.2.10`: `PROXY_LOCATION_REGEXP = (?:src/)?proxy`). Wraps `auth()` with a
+matcher of `['/admin/:path*', '/api/admin/:path*']` and decides the response
+itself:
+
+- allowlisted session → pass through;
+- `/api/admin/*` otherwise → JSON **401**;
+- page path otherwise → **redirect** to the sign-in page.
+
+Exporting the bare `auth` function instead is a security bug: on its own it only
+attaches `req.auth` and allows every matched request. That mistake was made and
+caught during implementation — `/admin` was reachable unauthenticated even
+though the proxy was running and the matcher was correct. Redirecting an API
+client to an HTML sign-in page is the second trap, and is why the two path
+families get different responses.
 
 Protection is deliberately two-layered: the proxy covers whole route trees, and
 `requireAdminSession()` re-checks inside each admin handler. A matcher typo
@@ -117,7 +128,6 @@ expects. The plaintext is never written to disk and never enters shell history.
 | Variable | Purpose |
 |---|---|
 | `AUTH_SECRET` | JWT signing key. Required at request time. |
-| `AUTH_TRUST_HOST` | `true` — trust `X-Forwarded-*` behind Cloudflare → Container Apps. |
 | `ADMIN_EMAIL` | The admin account's address, and the allowlist. Comma-separated; one entry today. |
 | `ADMIN_PASSWORD_HASH` | scrypt hash, format above. |
 
