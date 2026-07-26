@@ -200,14 +200,17 @@ git commit -m "feat: admin email allowlist (#63)"
 ### Task 3: scrypt password hashing and verification
 
 **Files:**
+- Create: `src/lib/auth/scrypt.ts`
 - Create: `src/lib/auth/credentials.ts`
 - Test: `src/lib/auth/credentials.test.ts`
 
 **Interfaces:**
 - Consumes: `isAdminEmail` (Task 2).
 - Produces:
-  - `hashPassword(password: string): Promise<string>` — returns `scrypt$<cost>$<blockSize>$<parallelization>$<base64Salt>$<base64Key>`.
-  - `verifyAdminCredentials(email: string, password: string): Promise<boolean>` — delegates the identity check to `isAdminEmail`, reads `ADMIN_PASSWORD_HASH` at call time.
+  - From `@/lib/auth/scrypt` — `hashPassword(password: string): Promise<string>` returning `scrypt$<cost>$<blockSize>$<parallelization>$<base64Salt>$<base64Key>`, and `verifyPassword(password: string, storedHash: string): Promise<boolean>`.
+  - From `@/lib/auth/credentials` — `verifyAdminCredentials(email: string, password: string): Promise<boolean>`, which delegates identity to `isAdminEmail` and hashing to `verifyPassword`, reading `ADMIN_PASSWORD_HASH` at call time.
+
+**Why two modules:** `scrypt.ts` holds the hashing primitives and imports nothing but `node:crypto` — no `@/` alias anywhere in its import chain. That is what lets Task 7's CLI script import the real hashing code rather than reimplementing its constants.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -215,7 +218,8 @@ Create `src/lib/auth/credentials.test.ts`:
 
 ```typescript
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { hashPassword, verifyAdminCredentials } from '@/lib/auth/credentials';
+import { verifyAdminCredentials } from '@/lib/auth/credentials';
+import { hashPassword, verifyPassword } from '@/lib/auth/scrypt';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -238,6 +242,23 @@ describe('hashPassword', () => {
     const first = await hashPassword('same password');
     const second = await hashPassword('same password');
     expect(first).not.toBe(second);
+  });
+});
+
+describe('verifyPassword', () => {
+  it('accepts the password that produced the hash', async () => {
+    const hash = await hashPassword('correct horse battery staple');
+    await expect(verifyPassword('correct horse battery staple', hash)).resolves.toBe(true);
+  });
+
+  it('rejects a different password', async () => {
+    const hash = await hashPassword('correct horse battery staple');
+    await expect(verifyPassword('wrong password', hash)).resolves.toBe(false);
+  });
+
+  it('rejects a malformed hash without throwing', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(verifyPassword('anything', 'not-a-valid-hash')).resolves.toBe(false);
   });
 });
 
@@ -309,14 +330,13 @@ describe('verifyAdminCredentials', () => {
 Run: `npm test -- src/lib/auth/credentials.test.ts`
 Expected: FAIL — cannot resolve `@/lib/auth/credentials`.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [ ] **Step 3: Write the hashing primitives**
 
-Create `src/lib/auth/credentials.ts`:
+Create `src/lib/auth/scrypt.ts`. **Import nothing but `node:crypto` and `node:util` here** — Task 7's CLI script imports this module by relative path, and any `@/` alias in the chain would break it.
 
 ```typescript
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import { isAdminEmail } from '@/lib/auth/allowlist';
 
 const scryptAsync = promisify(scrypt);
 
@@ -395,38 +415,57 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 /**
+ * Verifies a password against a stored scrypt hash.
+ * Returns false rather than throwing when the stored hash is unusable.
+ */
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  if (password.length === 0 || storedHash.trim().length === 0) {
+    return false;
+  }
+
+  try {
+    const { salt, key, ...parameters } = parseHash(storedHash.trim());
+    const candidate = await deriveKey(password, salt, parameters);
+
+    return candidate.length === key.length && timingSafeEqual(candidate, key);
+  } catch (error) {
+    console.error('Stored password hash is unusable', error);
+    return false;
+  }
+}
+```
+
+- [ ] **Step 3b: Write the admin credential policy**
+
+Create `src/lib/auth/credentials.ts`:
+
+```typescript
+import { isAdminEmail } from '@/lib/auth/allowlist';
+import { verifyPassword } from '@/lib/auth/scrypt';
+
+/**
  * Verifies a submitted email and password against the configured admin account.
  * Returns false for an unknown email, a wrong password, or unusable
  * configuration — the caller cannot distinguish the cases.
  */
 export async function verifyAdminCredentials(email: string, password: string): Promise<boolean> {
-  const storedHash = (process.env.ADMIN_PASSWORD_HASH ?? '').trim();
-
-  if (storedHash.length === 0 || password.length === 0 || !isAdminEmail(email)) {
+  if (!isAdminEmail(email)) {
     return false;
   }
 
-  try {
-    const { salt, key, ...parameters } = parseHash(storedHash);
-    const candidate = await deriveKey(password, salt, parameters);
-
-    return candidate.length === key.length && timingSafeEqual(candidate, key);
-  } catch (error) {
-    console.error('ADMIN_PASSWORD_HASH is unusable', error);
-    return false;
-  }
+  return verifyPassword(password, process.env.ADMIN_PASSWORD_HASH ?? '');
 }
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npm test -- src/lib/auth/credentials.test.ts`
-Expected: PASS, 11 tests.
+Expected: PASS, 14 tests.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/auth/credentials.ts src/lib/auth/credentials.test.ts
+git add src/lib/auth/scrypt.ts src/lib/auth/credentials.ts src/lib/auth/credentials.test.ts
 git commit -m "feat: scrypt admin credential verification (#63)"
 ```
 
@@ -720,40 +759,35 @@ git commit -m "feat: protect /admin and /api/admin via Next 16 proxy (#63)"
 ### Task 7: Password hashing script and configuration docs
 
 **Files:**
-- Create: `scripts/hash-admin-password.mjs`
+- Create: `scripts/hash-admin-password.ts`
+- Modify: `package.json` (add the `auth:hash` script)
 - Modify: `.env.example`
 - Modify: `AGENTS.md`
 - Modify: `docs/superpowers/specs/2026-07-17-rsvp-design.md`
 
 **Interfaces:**
-- Consumes: the hash format from Task 3 — `scrypt$<cost>$<blockSize>$<parallelization>$<base64Salt>$<base64Key>`.
+- Consumes: `hashPassword` from `src/lib/auth/scrypt.ts` (Task 3), imported by **relative** path.
 - Produces: an operator-facing way to generate `ADMIN_PASSWORD_HASH`.
 
-The script duplicates no logic: it imports nothing from `src/` (that is TypeScript, and this is a plain `.mjs` run by bare `node`), so it reimplements only the parameter constants. Keep the constants identical to `src/lib/auth/credentials.ts`.
+The script reimplements nothing. It is TypeScript run through `tsx` (already a devDependency, already used for `prisma/seed.ts`) and imports the same `hashPassword` the application uses, so the hash it prints cannot drift from the hash the verifier expects.
+
+Use a **relative** import (`../src/lib/auth/scrypt`), not the `@/` alias — `tsx` is not configured for path aliases in this repo, and `scrypt.ts` was deliberately written with no alias in its import chain.
 
 - [ ] **Step 1: Write the script**
 
-Create `scripts/hash-admin-password.mjs`:
+Create `scripts/hash-admin-password.ts`:
 
-```javascript
-#!/usr/bin/env node
-import { randomBytes, scrypt } from 'node:crypto';
+```typescript
 import { createInterface } from 'node:readline';
-import { promisify } from 'node:util';
+import { hashPassword } from '../src/lib/auth/scrypt';
 
-const scryptAsync = promisify(scrypt);
+const MINIMUM_PASSWORD_LENGTH = 12;
 
-const COST = 16384;
-const BLOCK_SIZE = 8;
-const PARALLELIZATION = 1;
-const SALT_BYTES = 16;
-const KEY_BYTES = 64;
-
-function promptSilently(question) {
+function promptSilently(question: string): Promise<string> {
   return new Promise((resolve) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
 
-    const onData = (chunk) => {
+    const onData = (chunk: Buffer) => {
       const char = chunk.toString();
       if (char === '\n' || char === '\r' || char === '') {
         process.stdin.removeListener('data', onData);
@@ -775,8 +809,8 @@ function promptSilently(question) {
 
 const password = await promptSilently('Admin password: ');
 
-if (password.length < 12) {
-  console.error('Refusing to hash a password shorter than 12 characters.');
+if (password.length < MINIMUM_PASSWORD_LENGTH) {
+  console.error(`Refusing to hash a password shorter than ${MINIMUM_PASSWORD_LENGTH} characters.`);
   process.exit(1);
 }
 
@@ -787,26 +821,24 @@ if (confirmation !== password) {
   process.exit(1);
 }
 
-const salt = randomBytes(SALT_BYTES);
-const key = await scryptAsync(password, salt, KEY_BYTES, {
-  N: COST,
-  r: BLOCK_SIZE,
-  p: PARALLELIZATION,
-  maxmem: 256 * COST * BLOCK_SIZE,
-});
-
-const hash = ['scrypt', COST, BLOCK_SIZE, PARALLELIZATION, salt.toString('base64'), key.toString('base64')].join('$');
+const hash = await hashPassword(password);
 
 console.log('\nAdd this line to .env (never commit it):\n');
 console.log(`ADMIN_PASSWORD_HASH="${hash}"`);
 ```
 
+- [ ] **Step 1b: Add the npm script**
+
+In `package.json`, alongside the existing `db:*` scripts, add:
+
+```json
+    "auth:hash": "tsx scripts/hash-admin-password.ts",
+```
+
 - [ ] **Step 2: Verify the script round-trips against the verifier**
 
-The script's output must validate under `verifyAdminCredentials`. Run:
-
 ```bash
-printf 'test-password-1234\ntest-password-1234\n' | node scripts/hash-admin-password.mjs | grep ADMIN_PASSWORD_HASH
+printf 'test-password-1234\ntest-password-1234\n' | npm run auth:hash --silent | grep ADMIN_PASSWORD_HASH
 ```
 
 Expected: one `ADMIN_PASSWORD_HASH="scrypt$16384$8$1$...$..."` line.
@@ -814,10 +846,12 @@ Expected: one `ADMIN_PASSWORD_HASH="scrypt$16384$8$1$...$..."` line.
 Then confirm that exact hash verifies, substituting the value printed above:
 
 ```bash
-ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD_HASH='<paste hash>' npx tsx -e "import('./src/lib/auth/credentials.ts').then(async (m) => console.log(await m.verifyAdminCredentials('admin@example.com', 'test-password-1234')))"
+ADMIN_PASSWORD_HASH='<paste hash>' npx tsx -e "import('./src/lib/auth/scrypt').then(async (m) => console.log(await m.verifyPassword('test-password-1234', process.env.ADMIN_PASSWORD_HASH)))"
 ```
 
-Expected output: `true`. If it prints `false`, the script's parameters have drifted from `src/lib/auth/credentials.ts` — reconcile them.
+Expected output: `true`.
+
+If `tsx` cannot resolve the relative import, check that `scripts/hash-admin-password.ts` imports `../src/lib/auth/scrypt` and that `scrypt.ts` imports only `node:` builtins. Do **not** fix this by copying the scrypt constants into the script — that reintroduces the drift this design removes.
 
 - [ ] **Step 3: Document the environment variables**
 
@@ -825,7 +859,7 @@ Append to `.env.example`:
 
 ```bash
 # Admin auth (issue #63). Generate the hash with:
-#   node scripts/hash-admin-password.mjs
+#   npm run auth:hash
 # AUTH_SECRET: generate with `openssl rand -base64 32`.
 # ADMIN_EMAIL doubles as the authorization allowlist; comma-separate to add admins.
 AUTH_SECRET=""
@@ -841,7 +875,7 @@ Read `AGENTS.md` and add a subsection under **Architecture**, matching the surro
 ```markdown
 ### Admin auth
 
-`/admin/*` and `/api/admin/*` are gated by `src/proxy.ts` (Next.js 16's renamed `middleware.ts`), which delegates to the Auth.js instance in `src/auth.ts`. Authentication is a single local admin — `ADMIN_EMAIL` plus a scrypt hash in `ADMIN_PASSWORD_HASH`, generated by `node scripts/hash-admin-password.mjs`. `ADMIN_EMAIL` doubles as the authorization allowlist (comma-separated; `src/lib/auth/allowlist.ts` is its only reader), enforced in the `signIn` callback so it applies to any provider added later. Sessions are JWTs; no database is involved.
+`/admin/*` and `/api/admin/*` are gated by `src/proxy.ts` (Next.js 16's renamed `middleware.ts`), which delegates to the Auth.js instance in `src/auth.ts`. Authentication is a single local admin — `ADMIN_EMAIL` plus a scrypt hash in `ADMIN_PASSWORD_HASH`, generated by `npm run auth:hash`. `ADMIN_EMAIL` doubles as the authorization allowlist (comma-separated; `src/lib/auth/allowlist.ts` is its only reader), enforced in the `signIn` callback so it applies to any provider added later. Sessions are JWTs; no database is involved.
 
 Route handlers call `requireAdminSession()` from `src/lib/auth/session.ts`, which returns either the admin email or a ready-to-return 401/403 `Response`.
 
@@ -870,7 +904,7 @@ Expected: `.env not staged`.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add scripts/hash-admin-password.mjs .env.example AGENTS.md docs/superpowers/specs/2026-07-17-rsvp-design.md
+git add scripts/hash-admin-password.ts package.json .env.example AGENTS.md docs/superpowers/specs/2026-07-17-rsvp-design.md
 git commit -m "docs: admin auth configuration and password hashing script (#63)"
 ```
 
@@ -892,7 +926,7 @@ This mechanism ships no UI of its own — #68 owns the admin pages and sign-in s
 Generate a hash and assemble `.env` (already gitignored; keep the existing `DATABASE_URL` line):
 
 ```bash
-node scripts/hash-admin-password.mjs   # use: local-dev-password-123
+npm run auth:hash                      # use: local-dev-password-123
 openssl rand -base64 32                # value for AUTH_SECRET
 ```
 

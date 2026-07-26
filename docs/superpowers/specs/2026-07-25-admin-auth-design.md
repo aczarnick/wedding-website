@@ -56,11 +56,11 @@ single source of truth.
 
 ### `src/lib/auth/credentials.ts`
 
-`verifyAdminCredentials(email: string, password: string): Promise<boolean>`.
-Delegates the identity check to `isAdminEmail`, then re-derives scrypt against
-`ADMIN_PASSWORD_HASH` using the salt and parameters embedded in the stored hash
-and compares with `timingSafeEqual`. Returns false for an unknown email, a bad
-password, or a malformed hash — the caller never learns which.
+`verifyAdminCredentials(email: string, password: string): Promise<boolean>` —
+the admin-account policy. Delegates the identity check to `isAdminEmail` and the
+hash comparison to `verifyPassword`, supplying `ADMIN_PASSWORD_HASH`. Returns
+false for an unknown email, a bad password, or a malformed hash — the caller
+never learns which.
 
 Hash format, self-describing so parameters can change without a migration:
 
@@ -99,11 +99,18 @@ Protection is deliberately two-layered: the proxy covers whole route trees, and
 `requireAdminSession()` re-checks inside each admin handler. A matcher typo
 should degrade to a 401, not to an open endpoint.
 
-### `scripts/hash-admin-password.mjs`
+### `src/lib/auth/scrypt.ts`
 
-Prompts for a password with echo suppressed, prints the
-`ADMIN_PASSWORD_HASH=...` line. The plaintext is never written to disk and never
-enters shell history.
+`hashPassword(password)` and `verifyPassword(password, storedHash)` — the scrypt
+primitives, importing nothing but `node:crypto`. Kept free of the `@/` alias so
+the CLI script below can import it directly under `tsx`.
+
+### `scripts/hash-admin-password.ts`
+
+Run via `npm run auth:hash`. Prompts for a password with echo suppressed and
+prints the `ADMIN_PASSWORD_HASH=...` line. It imports `hashPassword` rather than
+reimplementing it, so the hash it prints cannot drift from what the verifier
+expects. The plaintext is never written to disk and never enters shell history.
 
 ## Configuration
 
