@@ -22,6 +22,30 @@ Persistent facts about the current dev machine — not todos; Phase 0 reads thes
 Append a dated bullet when a run hits friction the skill didn't anticipate. Once a
 lesson is folded into `SKILL.md` (or captured as a machine quirk above), prune it.
 
+### 2026-07-26 — issue #64 (guest API)
+
+- **`npm test` and `npm run lint` do not typecheck; only `npm run build` does.**
+  A refactor used a type name it never imported. ESLint doesn't resolve type
+  names and Vitest transpiles via esbuild, which strips types without checking —
+  both passed. `next build` failed. Treat `build` as its own gate, not a
+  formality after green tests, and don't reorder it out of the CI sequence.
+  (`npx tsc --noEmit` is not a substitute here: it reports 21 pre-existing
+  errors in `src/proxy.test.ts` on `master`, so its exit code is already
+  non-zero — check errors *by file* against `master` before blaming your diff.)
+- **Vitest parallelizes test *files*, so two DB test files sharing one database
+  race.** Adding a second `test/db/*.test.ts` that calls `seedDatabase()` broke
+  the suite on the `Settings` singleton — and it passed when run alone, so only
+  the full gate caught it. Fix is Vitest's documented recipe: `test.projects`
+  with `fileParallelism: false` on the DB project only, `extends: true` to
+  inherit root plugins/resolve. Unit tests stay parallel. Any future DB test
+  belongs under `test/db/` or it will race.
+- **A verification script that changes DB state must restore it.** Proving the
+  deadline lock meant moving `Settings.rsvpDeadline` into the past; leaving it
+  there would have silently 403'd every later check. Re-seed after, and prefer
+  passing a `now` parameter to mutating shared state where the code allows it.
+- **`npx tsx -e` emits CJS and rejects top-level `await`.** Write the throwaway
+  script to a real `.ts` file with an `async main()`, run it, delete it.
+
 ### 2026-07-25 — issue #63 (admin auth)
 
 - **A green fast gate does not prove a gate is closed.** Lint, 55 tests, and a
