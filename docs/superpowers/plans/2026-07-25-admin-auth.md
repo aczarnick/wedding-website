@@ -207,7 +207,7 @@ git commit -m "feat: admin email allowlist (#63)"
 **Interfaces:**
 - Consumes: `isAdminEmail` (Task 2).
 - Produces:
-  - From `@/lib/auth/scrypt` — `hashPassword(password: string): Promise<string>` returning `scrypt$<cost>$<blockSize>$<parallelization>$<base64Salt>$<base64Key>`, and `verifyPassword(password: string, storedHash: string): Promise<boolean>`.
+  - From `@/lib/auth/scrypt` — `hashPassword(password: string): Promise<string>` returning `scrypt:<cost>:<blockSize>:<parallelization>:<base64Salt>:<base64Key>`, and `verifyPassword(password: string, storedHash: string): Promise<boolean>`.
   - From `@/lib/auth/credentials` — `verifyAdminCredentials(email: string, password: string): Promise<boolean>`, which delegates identity to `isAdminEmail` and hashing to `verifyPassword`, reading `ADMIN_PASSWORD_HASH` at call time.
 
 **Why two modules:** `scrypt.ts` holds the hashing primitives and imports nothing but `node:crypto` — no `@/` alias anywhere in its import chain. That is what lets Task 7's CLI script import the real hashing code rather than reimplementing its constants.
@@ -234,8 +234,8 @@ async function configureAdmin(email: string, password: string) {
 describe('hashPassword', () => {
   it('produces a self-describing scrypt string', async () => {
     const hash = await hashPassword('correct horse battery staple');
-    expect(hash.split('$')).toHaveLength(6);
-    expect(hash.startsWith('scrypt$')).toBe(true);
+    expect(hash.split(':')).toHaveLength(6);
+    expect(hash.startsWith('scrypt:')).toBe(true);
   });
 
   it('salts each hash so identical passwords differ', async () => {
@@ -313,7 +313,7 @@ describe('verifyAdminCredentials', () => {
 
   it('rejects a hash naming an unsupported algorithm', async () => {
     vi.stubEnv('ADMIN_EMAIL', 'admin@example.com');
-    vi.stubEnv('ADMIN_PASSWORD_HASH', 'bcrypt$16384$8$1$c2FsdA==$a2V5');
+    vi.stubEnv('ADMIN_PASSWORD_HASH', 'bcrypt:16384:8:1:c2FsdA==:a2V5');
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await expect(verifyAdminCredentials('admin@example.com', 'anything')).resolves.toBe(false);
   });
@@ -341,7 +341,7 @@ import { promisify } from 'node:util';
 const scryptAsync = promisify(scrypt);
 
 const ALGORITHM = 'scrypt';
-const FIELD_SEPARATOR = '$';
+const FIELD_SEPARATOR = ':';
 const SALT_BYTES = 16;
 const KEY_BYTES = 64;
 const DEFAULT_PARAMETERS = { cost: 16384, blockSize: 8, parallelization: 1 } as const;
@@ -842,7 +842,7 @@ In `package.json`, alongside the existing `db:*` scripts, add:
 printf 'test-password-1234\ntest-password-1234\n' | npm run auth:hash --silent | grep ADMIN_PASSWORD_HASH
 ```
 
-Expected: one `ADMIN_PASSWORD_HASH="scrypt$16384$8$1$...$..."` line.
+Expected: one `ADMIN_PASSWORD_HASH="scrypt:16384:8:1:...:..."` line.
 
 Then confirm that exact hash verifies, substituting the value printed above:
 

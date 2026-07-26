@@ -13,7 +13,7 @@ const scryptAsync = promisify(scrypt) as (
 ) => Promise<Buffer>;
 
 const ALGORITHM = 'scrypt';
-const FIELD_SEPARATOR = '$';
+const FIELD_SEPARATOR = ':';
 const SALT_BYTES = 16;
 const KEY_BYTES = 64;
 const DEFAULT_PARAMETERS = { cost: 16384, blockSize: 8, parallelization: 1 } as const;

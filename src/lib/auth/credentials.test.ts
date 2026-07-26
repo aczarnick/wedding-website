@@ -15,8 +15,13 @@ async function configureAdmin(email: string, password: string) {
 describe('hashPassword', () => {
   it('produces a self-describing scrypt string', async () => {
     const hash = await hashPassword('correct horse battery staple');
-    expect(hash.split('$')).toHaveLength(6);
-    expect(hash.startsWith('scrypt$')).toBe(true);
+    expect(hash.split(':')).toHaveLength(6);
+    expect(hash.startsWith('scrypt:')).toBe(true);
+  });
+
+  it('never contains a `$`, which .env loaders treat as variable expansion', async () => {
+    const hash = await hashPassword('correct horse battery staple');
+    expect(hash).not.toContain('$');
   });
 
   it('salts each hash so identical passwords differ', async () => {
@@ -94,7 +99,7 @@ describe('verifyAdminCredentials', () => {
 
   it('rejects a hash naming an unsupported algorithm', async () => {
     vi.stubEnv('ADMIN_EMAIL', 'admin@example.com');
-    vi.stubEnv('ADMIN_PASSWORD_HASH', 'bcrypt$16384$8$1$c2FsdA==$a2V5');
+    vi.stubEnv('ADMIN_PASSWORD_HASH', 'bcrypt:16384:8:1:c2FsdA==:a2V5');
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await expect(verifyAdminCredentials('admin@example.com', 'anything')).resolves.toBe(false);
   });
@@ -106,7 +111,7 @@ describe('verifyAdminCredentials', () => {
 
   it('rejects a stored hash with an absurd cost parameter without hanging or crashing', async () => {
     vi.stubEnv('ADMIN_EMAIL', 'admin@example.com');
-    vi.stubEnv('ADMIN_PASSWORD_HASH', 'scrypt$1073741824$8$1$c2FsdA==$a2V5');
+    vi.stubEnv('ADMIN_PASSWORD_HASH', 'scrypt:1073741824:8:1:c2FsdA==:a2V5');
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await expect(verifyAdminCredentials('admin@example.com', 'anything')).resolves.toBe(false);
   });
@@ -115,7 +120,7 @@ describe('verifyAdminCredentials', () => {
     vi.stubEnv('ADMIN_EMAIL', 'admin@example.com');
     // cost 65536, blockSize 64: neither factor is absurd on its own, but
     // 128 * 65536 * 64 = 512 MiB, twice the 256 MiB ceiling.
-    vi.stubEnv('ADMIN_PASSWORD_HASH', 'scrypt$65536$64$1$c2FsdA==$a2V5');
+    vi.stubEnv('ADMIN_PASSWORD_HASH', 'scrypt:65536:64:1:c2FsdA==:a2V5');
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await expect(verifyAdminCredentials('admin@example.com', 'anything')).resolves.toBe(false);
   });

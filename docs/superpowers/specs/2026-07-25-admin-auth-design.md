@@ -65,7 +65,7 @@ never learns which.
 Hash format, self-describing so parameters can change without a migration:
 
 ```
-scrypt$<cost>$<blockSize>$<parallelization>$<base64-salt>$<base64-derived-key>
+scrypt:<cost>:<blockSize>:<parallelization>:<base64-salt>:<base64-derived-key>
 ```
 
 ### `src/auth.ts`
