@@ -1,5 +1,4 @@
 import { z, type ZodError } from 'zod';
-import type { RowError } from '@/lib/rsvp/csvSchemas';
 
 export type RsvpErrorCode =
   | 'invalid_request'
@@ -29,6 +28,12 @@ export class RsvpError extends Error {
     this.code = code;
     this.details = details;
   }
+}
+
+/** A single problem found in the import file, addressed by 1-based file line. */
+export interface RowError {
+  line: number;
+  reason: string;
 }
 
 /**

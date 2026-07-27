@@ -27,12 +27,6 @@ export const EXPORT_COLUMNS = [
   'guestId',
 ] as const;
 
-/** A single problem found in the import file, addressed by 1-based file line. */
-export interface RowError {
-  line: number;
-  reason: string;
-}
-
 const CAP_MESSAGE = `addGuestCap must be a whole number between 0 and ${MAX_ADD_GUEST_CAP}`;
 
 function requiredName(column: string) {

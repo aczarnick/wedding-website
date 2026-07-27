@@ -1,11 +1,7 @@
 import { parse } from 'csv-parse/sync';
 import { CsvError, type Info } from 'csv-parse';
-import {
-  REQUIRED_IMPORT_COLUMNS,
-  importRowSchema,
-  type ImportRow,
-  type RowError,
-} from '@/lib/rsvp/csvSchemas';
+import { REQUIRED_IMPORT_COLUMNS, importRowSchema, type ImportRow } from '@/lib/rsvp/csvSchemas';
+import type { RowError } from '@/lib/rsvp/errors';
 
 export interface ImportGuest {
   firstName: string;
