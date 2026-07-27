@@ -1,175 +1,50 @@
 # ship-it — Learnings
 
-A running log of what the skill under-specified, or what surprised a run. Append
-a dated bullet whenever a run hits friction the skill didn't anticipate (Phase 9).
-Periodically **promote** recurring entries into `SKILL.md` — a gotcha, a phase
-tweak — and prune what's been folded in. This file is how the skill improves.
+The run log: what the skill under-specified, or what surprised a run. Append a
+dated bullet at Phase 9 **only when there is something actionable** — a
+frictionless run gets no entry, not a tombstone saying it had none.
 
-## Machine quirks (consult during Phase 0)
+When a lesson **recurs**, promote it and prune it from here:
 
-Persistent facts about the current dev machine — not todos; Phase 0 reads these.
+| Destination | For |
+| --- | --- |
+| `SKILL.md` | a rule that changes how a phase runs |
+| `references/environment.md` | a fact about this machine |
+| `references/gotchas.md` | a tool that lies, or a trap with no home phase |
+| `references/pr-screenshots.md` | anything about getting images into a PR |
 
-- **Container runtime:** the `docker` CLI is a dangling symlink (Docker Desktop
-  uninstalled). Use Podman — `export PATH="/opt/podman/bin:$PATH"`; the
-  `podman-machine-default` (applehv, Rosetta) is normally already running.
-- **DB port:** host `1433` is taken by another local SQL Server container. The
-  wedding DB uses host `14330` (`docker-compose.dev.yml`); don't disturb the other.
-- **SQL Server image:** 2025 crashes under Podman/Rosetta with an AVX assertion —
-  use `2022-latest`. Deeper context: personal memory `rsvp-data-layer-stack`.
-- **Never put `$` in a value destined for `.env`.** Next's env loader expands it —
-  a `$`-separated scrypt hash had `$16384` read as `$1` + `6384`, breaking every
-  sign-in. The same trap waits in shell, Terraform, and Container App secrets.
-  Colons are safe and base64-compatible. Personal memory: `env-var-dollar-expansion`.
-- **Pre-existing `tsc` noise:** `npx tsc --noEmit` reports ~21 errors in
-  `src/proxy.test.ts` plus a few image-import files on a clean `master`, so its
-  exit code is already non-zero. Check errors *by file* before blaming your diff.
-
-## Tooling gotchas
-
-Cross-cutting traps that cost a run real time but belong to no single phase.
-
-- **`npx tsx -e` emits CJS and rejects top-level `await`.** Write the throwaway
-  script to a real `.ts` file with an `async main()`, run it, then delete it.
-- **A file containing a literal U+FEFF makes `grep` print _nothing_** — not "0
-  matches", not "Binary file matches", just silence, because the file is
-  classified as binary. A plan whose test code embeds a BOM (`const BOM = '﻿'`)
-  is such a file. Three empty greps made an intact plan look truncated. The moment
-  a grep result disagrees with a `wc -l` that says the content is there, reach for
-  `grep -a`.
-- **`getByRole('alert')` matches the Next dev overlay, so an assertion on it can
-  pass vacuously.** Waiting on `getByRole('alert')` after a bad-password submit
-  resolved instantly against a dev-indicator element with empty text — while the
-  real submit was still in flight — and the step "passed" with `alert text: ""`.
-  Only opening the screenshot (button still reading "Signing in…", no error
-  visible) exposed it. Scope runtime assertions to the app's own DOM
-  (`form p[role="alert"]`) and treat empty matched text as a failure, not a pass.
-  Note scrypt verification takes ~1s, so a naive wait races it.
-- **A one-off Playwright script must live inside the worktree.** Node resolves
-  `playwright-core` from the *script's* directory, not the cwd, so a driver
-  written to the scratchpad dies with `ERR_MODULE_NOT_FOUND` however you invoke
-  it. Write it to the worktree root as `tmp-*.mjs` and delete it before committing.
-- **A verification that mutates shared state must restore it.** Proving a deadline
-  lock meant moving `Settings.rsvpDeadline` into the past; leaving it there would
-  have silently 403'd every later check. Re-seed afterwards, restore any `.env` you
-  edited, and prefer passing a `now` parameter over mutating shared state where the
-  code allows it.
+Learnings ship as **their own PR** (see `SKILL.md` Phase 9) — never a commit to
+`master`, and never staged with `git add -A` from the main tree, which may hold
+another run's uncommitted edits.
 
 ## Run log
 
-Append a dated bullet when a run hits friction the skill didn't anticipate. Once a
-lesson is folded into `SKILL.md` (or captured above), prune it.
+### 2026-07-27 — issue #68 (admin dashboard shell)
+
+- **Committed the run's learnings straight to local `master`, and the `git add`
+  swept in a concurrent run's in-flight edits to the same file.** Never pushed, but
+  it conflated two runs' findings in one commit and took a reset to untangle —
+  during which a *stale* `git status` reading (the main tree had moved off `master`
+  between turns) caused a second wrong-branch reset. Both are now rules in
+  `SKILL.md` → Git safety, and the learnings-PR workflow is in Phase 9.
 
 ### 2026-07-27 — issue #71 (wire RSVP button)
 
-- **An issue's premise can be false — verify the thing it says to modify exists
-  before planning.** #71 read "point the site's *existing* RSVP call-to-action at
-  /rsvp"; there was no such button anywhere in `src/`. A grep during Phase 1 turned
-  a "repoint one link" task into a design question (where does the CTA go?) that
-  had to reach the user at the plan checkpoint. Cheap to check, expensive to
-  discover mid-implementation.
-- **`/code-review` assumes an open PR; ship-it invokes it before pushing.** Its
-  procedure fetches a PR with `gh`, scores findings, and comments back — none of
-  which applies to an unpushed working diff. Phase 7 should say: review the diff
-  directly (inline for a small diff), and reserve the skill's PR flow for a review
-  of an already-open PR.
-- **The Bash tool's working directory persists across calls**, including a `cd`
-  inside a compound command. A dev server started "in the repo root" was actually
-  the worktree's — right answer by luck. Confirm with `pwd` (or `lsof -ti:3000`)
-  before trusting which tree a long-running server is serving.
-- **Verify a nav addition at the breakpoint where it first appears, not just at
-  desktop and mobile widths.** A 7th header link is exactly the change that wraps
-  at `md` (768px) while looking fine at 1280 and 390.
-- **UI PRs need screenshots, and the `docs/screenshots/` + raw-URL convention is
-  now mandatory in Phase 8** — promoted there along with the issue #68 entry that
-  predicted this exact repeat. Cost this run: the PR shipped with no visuals, and
-  the recovery first chased two dead ends (the Claude Chrome extension is not
-  connected, so web-UI upload is unavailable; an orphan `screenshots` branch was
-  denied by the permission classifier) before finding that `master` already carried
-  `docs/screenshots/rsvp/` from PR #90. **Read the repo for an existing convention
-  before designing a new one** — `git ls-tree -r origin/master | grep screenshots`
-  would have answered it in one command.
-- **The working-directory drift above bit twice in one run**, the second time
-  writing `docs/screenshots/` into the main repo's `master` tree instead of the
-  branch worktree. Harmless because it was untracked, but a `git add -A` would have
-  committed screenshots to the wrong branch. `pwd` before any path-relative write.
-
-### 2026-07-27 — issue #68 (admin dashboard shell)
-
-Both findings recurred on issue #71 and are now folded into `SKILL.md` — the
-`docs/screenshots/` + full-sha raw-URL convention (Phase 8) and the `/code-review`
-skill assuming an already-open PR (Phase 7). No pending items.
+- **The premise of an issue can be false.** #71 said "point the site's *existing*
+  RSVP call-to-action at /rsvp"; no such button existed anywhere in `src/`. Now a
+  Phase 1 rule.
+- Working-directory drift bit twice in one run — a dev server started in the wrong
+  tree, then `docs/screenshots/` written into the main repo instead of the branch
+  worktree. Harmless only because it was untracked. Now a Git safety rule.
 
 ### 2026-07-27 — issue #67 (guest RSVP wizard UI)
 
-First UI-heavy run, so the browser step carried the weight the gate could not.
-The reviewer-model finding is folded into `SKILL.md` (Phase 5); these are the
-UI-verification lessons the skill did not anticipate.
-
-- **A mouse-driven browser pass structurally cannot catch keyboard-only
-  defects.** A status toggle hid its radio with `sr-only`, so the focus ring
-  landed on a 1×1 clipped box and a keyboard guest had no idea which row they
-  were on — WCAG 2.4.7, invisible to 292 tests and to the whole Playwright flow,
-  caught only by a reviewer reading markup. Worse, the first fix *looked* applied
-  and still wasn't visible: `ring-sage-700` on `bg-sage-700` is a ring the exact
-  color of the thing it rings. Any control that visually hides its input owes an
-  explicit keyboard pass — `Tab` to it, assert `:focus-visible` matches, and read
-  the computed `box-shadow`, because a screenshot of a mouse-driven run will not
-  show you the problem or the fix.
-- **A screenshot taken mid-`transition-colors` lies.** A toggle rendered grey in
-  a full-page shot and looked like a real styling bug; a computed-style probe run
-  immediately after the click appeared to confirm it. Both were sampling the
-  interpolated value — settling 400 ms first showed every toggle at the correct
-  `rgb(53,82,67)`. Settle before capturing, and re-probe after a delay before
-  reporting any apparent visual defect.
-- **The seed cannot reach every UI state.** The disambiguation picker needs two
-  parties sharing a guest's full name, and the seed has none, so that screen was
-  unreachable in the browser. Create the fixture temporarily, verify, then
-  `db:seed` to restore — the same mutate-and-restore discipline the deadline
-  check already needs.
-- **Two Playwright locator traps in this app.** `getByText('Additional guest 1')`
-  matches the heading, the remove button, *and* an `sr-only` legend — pass
-  `{ exact: true }`. And an added-guest row nests its name one level deeper than
-  a party-guest row, so `.closest('div')` / `.last()` resolve to different
-  elements for the two; anchor on the row that also contains radios.
-- **Refresh every screenshot a change invalidates, not just the obvious one.**
-  De-emphasizing a control updated the desktop shots; the mobile shot still
-  advertised the old "(4 left)" copy in the PR for a commit and a half. `git log
-  -1 -- <file>` per image tells you which ones predate the change.
-
-### 2026-07-27 — issue #66 (CSV import/export)
-
-All findings folded into `SKILL.md` — confirming a dependency is merged rather
-than inferring it (Phase 1), `origin/master` as the base (Phase 2), plan snippets
-owing a review (Phase 4), `task-brief` corruption and lockfile-in-Linux-image
-(Phase 5), exit codes lost through pipes and `build` as the only typechecker
-(Phase 6), asking the review which test injects the failure mid-operation
-(Phase 7) — or captured as tooling gotchas above. No pending items.
-
-### 2026-07-27 — issue #65 (admin API)
-
-All findings folded into `SKILL.md` — stale local `master` (Phase 2), missing
-`.env` in a fresh worktree (Phase 0), plan code blocks carrying defects into
-faithful transcription (Phase 4), proving a restriction in **both** directions
-(Phase 6), and re-running the container build when fixes land after it (Phase 7).
-No pending items.
+First UI-heavy run; the browser step carried the weight the gate could not. The
+reviewer-model finding is in `SKILL.md` Phase 5; the UI-verification traps are in
+`references/gotchas.md`.
 
 ### 2026-07-26 — issue #64 (guest API)
 
-- **Vitest parallelizes test *files*, so two DB test files sharing one database
-  race.** Fixed with `test.projects` + `fileParallelism: false` on the DB project
-  only; unit tests stay parallel. Now documented in `AGENTS.md` — any future DB
-  test belongs under `test/db/` or it will race. Retained here as the origin of
-  that constraint; everything else from this run is folded into `SKILL.md`.
-
-### 2026-07-25 — issue #63 (admin auth)
-
-All findings folded into `SKILL.md` (Phase 5 lockfile-in-Linux-image and verifying
-subagent claims, Phase 6 runtime proof of a restriction and exit codes through
-pipes, Phase 4 plan prose governing plan snippets) or captured as machine quirks
-above. No pending items.
-
-### 2026-07-18 — issue #62 (RSVP data layer)
-
-All findings folded into `SKILL.md` (Phase 0 precheck, Phase 4 research memos,
-Phase 5 subagent-driven impl, Phase 6/7 CI-mirrored gate + one-time docker + output
-trimming) or captured as machine quirks above. No pending items.
+- Vitest's file-level parallelism races DB tests sharing one database. Fixed with
+  `test.projects` + `fileParallelism: false` on the `db` project only, and
+  documented in `AGENTS.md`. Retained as the origin of that constraint.
