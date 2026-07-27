@@ -80,8 +80,10 @@ export async function searchParties(
   }
 
   const parties = await client.party.findMany({
-    where: { guests: { some: { OR: [...candidates] } } },
-    include: { guests: { select: { firstName: true }, orderBy: GUEST_ORDER } },
+    where: { deletedAt: null, guests: { some: { deletedAt: null, OR: [...candidates] } } },
+    include: {
+      guests: { where: { deletedAt: null }, select: { firstName: true }, orderBy: GUEST_ORDER },
+    },
     orderBy: { displayName: 'asc' },
   });
 
@@ -143,9 +145,9 @@ export async function getPartyDetail(
     throw new RsvpError(404, 'party_not_found', 'Party not found');
   }
 
-  const party = await client.party.findUnique({
-    where: { id: partyId },
-    include: { guests: { orderBy: GUEST_ORDER } },
+  const party = await client.party.findFirst({
+    where: { id: partyId, deletedAt: null },
+    include: { guests: { where: { deletedAt: null }, orderBy: GUEST_ORDER } },
   });
 
   if (!party) {
@@ -174,9 +176,9 @@ export async function submitRsvp(
   const deadline = await requireRsvpOpen(client, now);
 
   return client.$transaction(async (tx) => {
-    const party = await tx.party.findUnique({
-      where: { id: partyId },
-      include: { guests: { orderBy: GUEST_ORDER } },
+    const party = await tx.party.findFirst({
+      where: { id: partyId, deletedAt: null },
+      include: { guests: { where: { deletedAt: null }, orderBy: GUEST_ORDER } },
     });
 
     if (!party) {
@@ -245,7 +247,10 @@ export async function submitRsvp(
       addedGuests.push(created);
     }
 
-    const guestsAfter = await tx.guest.findMany({ where: { partyId }, orderBy: GUEST_ORDER });
+    const guestsAfter = await tx.guest.findMany({
+      where: { partyId, deletedAt: null },
+      orderBy: GUEST_ORDER,
+    });
     const after = toPartySnapshot(input.message, guestsAfter);
 
     await tx.auditEntry.create({
