@@ -32,6 +32,21 @@ function failure(recordCount: number, rowErrors: RowError[]): ImportParseResult 
   return { ok: false, recordCount, rowErrors };
 }
 
+/** Column names that appear more than once in the header, in first-seen order. */
+function duplicateColumns(header: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const column of header) {
+    if (seen.has(column)) {
+      duplicates.add(column);
+    }
+    seen.add(column);
+  }
+
+  return [...duplicates];
+}
+
 /**
  * csv-parse throws mid-stream on a malformed row, but the error still carries
  * how many records it had already parsed. Task 5 checks `recordCount` against
@@ -44,6 +59,19 @@ function recordCountFrom(error: unknown): number {
   }
 
   return 0;
+}
+
+/**
+ * csv-parse's structural errors (e.g. a ragged row) carry the file line they
+ * occurred on via `.lines`. Falls back to the header line for errors that
+ * don't carry one, rather than mislabeling every parse failure as line 1.
+ */
+function lineFrom(error: unknown): number {
+  if (error instanceof CsvError && typeof error.lines === 'number') {
+    return error.lines;
+  }
+
+  return HEADER_LINE;
 }
 
 /**
@@ -171,7 +199,15 @@ export function parseImportCsv(text: string): ImportParseResult {
     ({ header, records } = readRecords(text));
   } catch (error) {
     return failure(recordCountFrom(error), [
-      { line: HEADER_LINE, reason: error instanceof Error ? error.message : 'Could not read the file' },
+      { line: lineFrom(error), reason: error instanceof Error ? error.message : 'Could not read the file' },
+    ]);
+  }
+
+  const duplicates = duplicateColumns(header);
+
+  if (duplicates.length > 0) {
+    return failure(records.length, [
+      { line: HEADER_LINE, reason: `Duplicate column: ${duplicates.join(', ')}` },
     ]);
   }
 

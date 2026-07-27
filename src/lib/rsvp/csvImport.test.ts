@@ -78,6 +78,14 @@ describe('parseImportCsv', () => {
     expect(errors).toEqual([{ line: 1, reason: 'Missing required column: lastName' }]);
   });
 
+  it('reports a duplicate header column as a header-level error instead of silently dropping it', () => {
+    const errors = errorsOf(
+      `${HEADER},firstName\nSmiths,John,Smith,,,Duplicate\n`,
+    );
+
+    expect(errors).toEqual([{ line: 1, reason: 'Duplicate column: firstName' }]);
+  });
+
   it('reports an empty file', () => {
     expect(errorsOf('   ')).toEqual([{ line: 1, reason: 'The file is empty' }]);
   });
@@ -132,7 +140,16 @@ describe('parseImportCsv', () => {
     const errors = errorsOf(`${HEADER}\nSmiths,John,Smith,,5,extra\n`);
 
     expect(errors).toHaveLength(1);
+    expect(errors[0].line).toBe(2);
     expect(errors[0].reason).toMatch(/column/i);
+  });
+
+  it('reports the real line of a ragged row, not the header line', () => {
+    const errors = errorsOf(
+      `${HEADER}\nSmiths,John,Smith,,\nJoneses,Jane,Jones,,\nBroken,Bob,Smith,,5,extra\n`,
+    );
+
+    expect(errors).toEqual([{ line: 4, reason: expect.stringMatching(/column/i) }]);
   });
 
   it('reports the real recordCount from a mid-file ragged row, not zero', () => {
