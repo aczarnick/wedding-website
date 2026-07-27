@@ -83,4 +83,27 @@ describe.skipIf(!databaseUrl)('admin audit log', () => {
     expect(total).toBe(2);
     expect(entries[0].action).toBe(AUDIT_ACTION.partyUpdated);
   });
+
+  it('surfaces corrupt snapshots as raw strings without failing the whole query', async () => {
+    const party = await prisma.party.findFirstOrThrow({
+      where: { displayName: 'The Smith Family' },
+    });
+
+    const corruptRawText = 'not valid JSON at all';
+    await prisma.auditEntry.create({
+      data: {
+        partyId: party.id,
+        action: AUDIT_ACTION.partyUpdated,
+        actorType: 'admin',
+        before: JSON.stringify({ addGuestCap: 5 }),
+        after: corruptRawText,
+      },
+    });
+
+    const { entries, total } = await queryAuditLog(prisma, { limit: 100, offset: 0 });
+
+    expect(total).toBe(1);
+    expect(entries[0].after).toBe(corruptRawText);
+    expect(entries[0].before).toEqual({ addGuestCap: 5 });
+  });
 });

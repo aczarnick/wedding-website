@@ -15,18 +15,19 @@ export interface AuditEntryView {
 }
 
 /**
- * Snapshots are stored as JSON text. A row written by an older shape should
- * still be readable in the change log, so an unparseable value is surfaced
- * verbatim rather than failing the whole query.
+ * Snapshots are stored as JSON text by writeAuditEntry. A parse failure
+ * indicates stored data corruption. The raw text is surfaced and the failure
+ * logged so one bad row cannot hide the rest of the change log.
  */
-function parseSnapshot(value: string | null): unknown {
+function parseSnapshot(value: string | null, entryId: string, field: 'before' | 'after'): unknown {
   if (value === null) {
     return null;
   }
 
   try {
     return JSON.parse(value);
-  } catch {
+  } catch (error) {
+    console.error(`Audit entry ${entryId} has an unparseable ${field} snapshot`, error);
     return value;
   }
 }
@@ -59,8 +60,8 @@ export async function queryAuditLog(
       action: row.action,
       actorType: row.actorType,
       actorEmail: row.actorEmail,
-      before: parseSnapshot(row.before),
-      after: parseSnapshot(row.after),
+      before: parseSnapshot(row.before, row.id, 'before'),
+      after: parseSnapshot(row.after, row.id, 'after'),
       ipAddress: row.ipAddress,
       createdAt: row.createdAt.toISOString(),
     })),
