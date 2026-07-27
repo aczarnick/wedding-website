@@ -166,7 +166,10 @@ export async function moderateGuest(
       guestId,
       action: AUDIT_ACTION.guestModerated,
       before: toAdminGuest(existing),
-      after: { ...toAdminGuest(updated), action: input.action },
+      after: {
+        decision: input.action,
+        guest: input.action === 'approve' ? toAdminGuest(updated) : null,
+      },
     });
 
     return toAdminGuest(updated);

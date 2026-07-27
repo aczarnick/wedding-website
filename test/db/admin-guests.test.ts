@@ -52,6 +52,16 @@ describe.skipIf(!databaseUrl)('admin guest services', () => {
     it('excludes flagged guests when asked for unflagged ones', async () => {
       expect(await listGuests(prisma, { flagged: false })).toHaveLength(4);
     });
+
+    it('excludes guests whose party is soft-deleted, even if the guests themselves are not', async () => {
+      const guest = await smithGuest();
+
+      await prisma.party.update({ where: { id: guest.partyId }, data: { deletedAt: new Date() } });
+
+      const guests = await listGuests(prisma, {});
+      expect(guests).toHaveLength(3);
+      expect(guests.map((each) => each.partyId)).not.toContain(guest.partyId);
+    });
   });
 
   describe('createGuest', () => {
@@ -176,7 +186,7 @@ describe.skipIf(!databaseUrl)('admin guest services', () => {
       await expect(getGuest(prisma, guest.id)).rejects.toMatchObject({ code: 'guest_not_found' });
     });
 
-    it('records the moderation decision in the change log', async () => {
+    it('records the approve decision and resulting guest in the change log', async () => {
       const guest = await flaggedGuest();
 
       await moderateGuest(prisma, audit, guest.id, { action: 'approve' });
@@ -184,7 +194,22 @@ describe.skipIf(!databaseUrl)('admin guest services', () => {
       const entry = await prisma.auditEntry.findFirstOrThrow({
         where: { guestId: guest.id, action: AUDIT_ACTION.guestModerated },
       });
-      expect(JSON.parse(entry.after!).flaggedForReview).toBe(false);
+      const after = JSON.parse(entry.after!);
+      expect(after.decision).toBe('approve');
+      expect(after.guest.flaggedForReview).toBe(false);
+    });
+
+    it('records the remove decision with no live guest in the change log', async () => {
+      const guest = await flaggedGuest();
+
+      await moderateGuest(prisma, audit, guest.id, { action: 'remove' });
+
+      const entry = await prisma.auditEntry.findFirstOrThrow({
+        where: { guestId: guest.id, action: AUDIT_ACTION.guestModerated },
+      });
+      const after = JSON.parse(entry.after!);
+      expect(after.decision).toBe('remove');
+      expect(after.guest).toBeNull();
     });
 
     it('rejects moderating a guest that was never flagged', async () => {
