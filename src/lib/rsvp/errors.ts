@@ -6,7 +6,9 @@ export type RsvpErrorCode =
   | 'party_not_found'
   | 'party_changed'
   | 'add_guest_cap_exceeded'
-  | 'settings_missing';
+  | 'settings_missing'
+  | 'guest_not_found'
+  | 'guest_not_flagged';
 
 /** An error carrying the HTTP status and machine-readable code to return. */
 export class RsvpError extends Error {
