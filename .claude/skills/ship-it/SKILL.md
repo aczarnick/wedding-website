@@ -39,6 +39,13 @@ known quirks, then check only what the issue will actually use:
 - **DB port** (only if the work needs a local database): confirm the target host
   port is free before `db:up` — a pre-existing container may hold the default.
 - **Gate tools**: `node`/`npm` satisfy `engines`; `gh` is authenticated.
+- **`.env`** (only if the work touches the DB, auth, or any runtime check): a
+  fresh worktree has none, and it is gitignored, so *nothing warns you* — the gap
+  surfaces as a failing DB test or a broken sign-in much later. Copy it from the
+  previous issue's worktree and confirm the keys this issue actually needs;
+  `DATABASE_URL` for anything data-touching, plus `AUTH_SECRET` / `ADMIN_EMAIL` /
+  `ADMIN_PASSWORD_HASH` for anything auth-touching. The keys are often spread
+  across different worktrees — check the values are non-empty, not just present.
 
 Keep this to a few quick commands. Don't block a docs- or content-only issue on
 container checks it will never use.
@@ -61,16 +68,34 @@ gh issue list --assignee @me --state open --json number,title,labels \
 
 Present the list and wait for the user to choose. Do not auto-pick.
 
+If the issue names dependencies ("Depends on: #62, #63"), **confirm each is merged
+rather than inferring it from local branch state**. A dependency's branch or
+worktree existing locally says nothing about whether it landed:
+
+```bash
+git fetch origin
+gh pr view <dep> --json state,mergedAt -q '.state'
+```
+
+A dependency that is merged but absent from your base means you are about to
+rebuild work that already exists, or build against an API that has since changed.
+
 ## Phase 2 — Isolated worktree
 
 Derive a kebab-case slug from the issue title (lowercase, alphanumerics and
-hyphens, trimmed). Create a worktree on a new branch off `master`, matching this
-repo's existing convention (`.claude/worktrees/` is gitignored):
+hyphens, trimmed). Create a worktree on a new branch off **`origin/master`**,
+matching this repo's existing convention (`.claude/worktrees/` is gitignored):
 
 ```bash
+git fetch origin
 slug="<kebab-title>"
-git worktree add -b "issue-<n>-${slug}" ".claude/worktrees/issue-<n>-${slug}" master
+git worktree add -b "issue-<n>-${slug}" ".claude/worktrees/issue-<n>-${slug}" origin/master
 ```
+
+Branch from `origin/master`, never the local `master`. Local `master` here is
+routinely stale — it has been several merges behind at the start of a run — and a
+worktree cut from it silently omits the merged dependency work the issue is built
+on, which surfaces much later as a missing module or a conflicting API.
 
 All remaining work happens **inside that worktree**. A fresh worktree has no
 `node_modules` — install before any build:
@@ -107,6 +132,19 @@ fine) with the specific question; have it return a short **decision memo** (the
 answer + the source URL) and discard the raw pages. Un-delegated research is a
 large, silent context cost.
 
+**Plan code blocks are first-draft code that still owes a review.** When a plan
+contains complete code, implementers transcribe it faithfully — bugs included.
+Across runs, a large share of review findings have traced back to defects in the
+plan's own snippets rather than implementer error: a zeroed counter that
+contradicted the plan's stated contract, an assertion too weak to catch the
+regression its test existed for, a swallowed parse error. Two consequences:
+
+- Re-read your own code blocks against the plan's prose before presenting it.
+  Where they disagree, **the prose governs** — it states the contract; the snippet
+  is an illustration of it.
+- When a review finding traces back to plan text, fix the plan too, not just the
+  code. Otherwise later tasks inherit it and the same defect returns.
+
 **Do not proceed to implementation until the user approves the plan.**
 
 ## Phase 5 — Implement (autonomous)
@@ -130,6 +168,25 @@ Where a test surface exists, have the implementing agent use
 `superpowers:test-driven-development`. One task in flight at a time; a task is done
 only when its slice of the gate is green.
 
+**Adding a dependency? Generate the lockfile inside the Linux image.** `npm
+install` on this Mac prunes cross-platform optional deps (`@emnapi/*`) and breaks
+CI's `npm ci` — and local `npm ci --dry-run` still passes, so only the container
+build catches it. Add the package, then install from the lockfile:
+
+```bash
+podman run --rm -v "$PWD":/app -w /app node:24-alpine \
+  npm install --package-lock-only <pkg>
+npm ci
+```
+
+**Verify what a subagent hands back.** Two failure modes recur: a "verified by
+inspection" claim that a real run disproves, and faithful transcription of a
+broken snippet. If `superpowers:subagent-driven-development`'s `scripts/task-brief`
+is used to extract task text, **diff the brief against the plan first** — it has
+silently truncated a template literal mid-line, producing invalid code with no
+error. Extracting with a tool that does no shell expansion (a short node slice on
+the `### Task N:` headings) avoids the class entirely.
+
 ## Phase 6 — Verify (autonomous)
 
 Run the fast gate **in the worktree**, in CI order:
@@ -142,10 +199,37 @@ npm run lint && npm run check:images && npm test && npm run build
 failing lines. "Show the actual output" means the evidence, not the whole dump;
 verbatim gate and build logs are the biggest avoidable context cost.
 
-On failure, apply the [Failure handling](#failure-handling) rule. For
-UI/runtime-visible changes, additionally drive the app per the
-`run-wedding-website` skill and view the result — a green gate does not prove
-rendered behavior.
+**But a pipe discards the exit code** — `cmd | tail` reports the status of `tail`,
+which is always 0. A failed build has been reported as a success this way. When
+the pass/fail verdict matters, redirect to a file, check `$?`, *then* trim:
+
+```bash
+podman build -t czw:ci . > /tmp/build.log 2>&1; echo "EXIT=$?"; tail -12 /tmp/build.log
+```
+
+Note `npm run build` is the **only** gate step that typechecks — ESLint doesn't
+resolve type names and Vitest strips types via esbuild without checking them. A
+wrong type name passes lint and tests and fails here, so never reorder `build`
+out of the sequence or treat it as a formality after green tests.
+
+On failure, apply the [Failure handling](#failure-handling) rule.
+
+**Prove runtime behavior, not just a green gate.** For any UI-visible change,
+drive the app per the `run-wedding-website` skill and *view* the result. For any
+issue whose deliverable is a **restriction** (auth, a deadline lock, a size or
+rate limit), the runtime check is the gate rather than a formality, and it must
+prove **both directions**:
+
+- The denial — unauthenticated/over-limit calls return the intended status, and
+  nothing was written. A gate that rejects everyone also passes a denial-only test.
+- The authorized happy path — the real flow still works end to end.
+
+A green suite has passed here while `/admin` sat wide open. For API surfaces,
+curl against the running dev server is the honest instrument: it shows status
+codes, response headers, and the database's before/after state. To get the
+authorized half, generate a throwaway `ADMIN_PASSWORD_HASH` locally, drive the
+Auth.js credentials callback with curl and a cookie jar, then **restore `.env`
+and re-seed** — any verification that mutates shared state must put it back.
 
 The heavy **CI-parity check** — `docker build` (or `podman build`; see
 `LEARNINGS.md`) — is slow (image pull + `npm ci` + build) and its output is large.
@@ -168,6 +252,18 @@ Then run the one-time CI-parity check before shipping:
 ```bash
 docker build -t czw:ci .   # or: podman build -t czw:ci .
 ```
+
+The container build must validate **actual HEAD**. If any fix lands after it —
+a review fix wave, a late correction — the build you ran no longer describes what
+you are about to push, so run it again. This is why the phase order puts review
+before the build; keep that order.
+
+**Ask the review what the diff cannot show.** A reviewer reading only a diff
+confirms that code exists, not that a guarantee is *tested*. When the change has a
+headline property — "on failure nothing persists", "only ever creates", "denied
+unless authorized" — ask explicitly which test injects the failure mid-operation.
+Per-task reviews have passed an all-or-nothing transaction whose every test
+rejected before the transaction even opened; only the whole-branch review caught it.
 
 Apply the [Failure handling](#failure-handling) rule to both.
 
