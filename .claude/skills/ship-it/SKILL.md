@@ -164,6 +164,17 @@ boundary rules).
   exist precisely so a cold subagent can execute one task in isolation. The
   orchestrator stays on the stronger model and only reviews.
 
+**Spend the strong reviewer on the task that owns control flow.** Reviewer model
+choice matters more than reviewer count. On #67, six task reviews on a cheap
+model came back clean or with cosmetic minors; the one review dispatched on the
+strong model — the task owning the wizard's state machine and error mapping —
+returned four Important findings, two of them bugs that would have shipped (a
+`404` stranding the user in an editor for a deleted record with no exit, and a
+transient refetch failure discarding their whole draft behind a message claiming
+the record no longer existed). Cheap reviewers are fine for leaf components; they
+are not fine for the state machine, the error mapper, or the orchestrator every
+other task routes through. Identify that task when you write the plan.
+
 Where a test surface exists, have the implementing agent use
 `superpowers:test-driven-development`. One task in flight at a time; a task is done
 only when its slice of the gate is green.
