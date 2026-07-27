@@ -39,6 +39,24 @@ describe('importRowSchema', () => {
     expect(result.data?.message).toBeNull();
   });
 
+  it('strips the exporter\'s formula-escape apostrophe on round trip', () => {
+    const result = parseRow({ ...validRow, message: "'- Can't wait!" });
+
+    expect(result.data?.message).toBe("- Can't wait!");
+  });
+
+  it('preserves a message that legitimately starts with an apostrophe', () => {
+    const result = parseRow({ ...validRow, message: "'twas a lovely day" });
+
+    expect(result.data?.message).toBe("'twas a lovely day");
+  });
+
+  it('strips only one apostrophe from a doubled leading escape', () => {
+    const result = parseRow({ ...validRow, message: "''=x" });
+
+    expect(result.data?.message).toBe("'=x");
+  });
+
   it('rejects a blank required name', () => {
     const result = parseRow({ ...validRow, firstName: '  ' });
 

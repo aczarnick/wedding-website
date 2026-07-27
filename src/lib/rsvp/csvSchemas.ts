@@ -29,6 +29,30 @@ export const EXPORT_COLUMNS = [
 
 const CAP_MESSAGE = `addGuestCap must be a whole number between 0 and ${MAX_ADD_GUEST_CAP}`;
 
+/** Leading characters that `csvExport.ts`'s `escape_formulas` guards against. */
+const FORMULA_TRIGGER_CHARS = new Set(['=', '+', '-', '@', '\t', '\r']);
+
+/**
+ * Inverse of the exporter's formula-escape prefix: a leading run of `'`
+ * immediately followed by a formula-trigger character is the exporter's own
+ * escape, so exactly one is removed. Any other leading apostrophe (including
+ * one immediately followed by another apostrophe) is real message content
+ * and is left untouched — stripping it would corrupt a message that
+ * legitimately starts with `'`.
+ */
+function stripFormulaEscape(value: string): string {
+  let apostrophes = 0;
+  while (value[apostrophes] === "'") {
+    apostrophes += 1;
+  }
+
+  if (apostrophes === 0 || !FORMULA_TRIGGER_CHARS.has(value[apostrophes])) {
+    return value;
+  }
+
+  return value.slice(1);
+}
+
 function requiredName(column: string) {
   return z
     .string()
@@ -44,6 +68,7 @@ const optionalMessage = z
   .string()
   .default('')
   .transform((value) => value.trim())
+  .transform(stripFormulaEscape)
   .refine((value) => value.length <= MAX_MESSAGE_LENGTH, {
     message: `message must be ${MAX_MESSAGE_LENGTH} characters or fewer`,
   })

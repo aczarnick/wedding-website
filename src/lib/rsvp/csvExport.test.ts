@@ -80,4 +80,13 @@ describe('toExportCsv', () => {
 
     expect(result.ok).toBe(true);
   });
+
+  it('round-trips a message starting with a formula-trigger character losslessly', async () => {
+    const { parseImportCsv } = await import('@/lib/rsvp/csvImport');
+    const csv = toExportCsv([record({ message: "- Can't wait!" })]);
+    const result = parseImportCsv(csv);
+
+    if (!result.ok) throw new Error(`expected parse to succeed: ${JSON.stringify(result.rowErrors)}`);
+    expect(result.parties[0].message).toBe("- Can't wait!");
+  });
 });
