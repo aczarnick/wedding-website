@@ -6,7 +6,7 @@ const SUBMITTABLE_STATUSES = [RSVP_STATUS.attending, RSVP_STATUS.declined] as co
 
 const submittableStatus = z.enum(SUBMITTABLE_STATUSES);
 
-function optionalText(maxLength: number) {
+export function optionalText(maxLength: number) {
   return z
     .string()
     .nullish()
@@ -19,7 +19,7 @@ function optionalText(maxLength: number) {
     });
 }
 
-const requiredName = z
+export const requiredName = z
   .string()
   .transform((value) => value.trim())
   .refine((value) => value.length >= 1 && value.length <= 100, {
