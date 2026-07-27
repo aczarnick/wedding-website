@@ -12,36 +12,12 @@ import {
 } from '@/lib/rsvp/policy';
 import type { SnapshotGuest } from '@/lib/rsvp/policy';
 import type { SubmitRsvpInput } from '@/lib/rsvp/schemas';
+import type { PartyDetail, PartyDetailGuest, PartySearchResult } from '@/lib/rsvp/types';
 
 export const GUEST_ORDER: Prisma.GuestOrderByWithRelationInput[] = [
   { createdAt: 'asc' },
   { id: 'asc' },
 ];
-
-export interface PartySearchResult {
-  id: string;
-  displayName: string;
-  guestFirstNames: string[];
-}
-
-export interface PartyDetailGuest {
-  id: string;
-  firstName: string;
-  lastName: string;
-  rsvpStatus: string;
-  songRequest: string | null;
-  source: string;
-}
-
-export interface PartyDetail {
-  id: string;
-  displayName: string;
-  message: string | null;
-  addGuestCap: number;
-  addedGuestsRemaining: number;
-  rsvpDeadline: string;
-  guests: PartyDetailGuest[];
-}
 
 /**
  * Loads the singleton settings row, failing loudly if it is missing rather
