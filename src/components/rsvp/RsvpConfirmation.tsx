@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { StepHeading } from './StepHeading';
-import { GUEST_SOURCE, RSVP_STATUS } from '@/lib/enums';
+import { RSVP_STATUS } from '@/lib/enums';
 import type { PartyDetail, PartyDetailGuest } from '@/lib/rsvp/types';
 
 interface RsvpConfirmationProps {
@@ -40,7 +40,6 @@ const GuestList: React.FC<{ heading: string; guests: PartyDetailGuest[] }> = ({
 export const RsvpConfirmation: React.FC<RsvpConfirmationProps> = ({ party, onEdit }) => {
   const attending = party.guests.filter((guest) => guest.rsvpStatus === RSVP_STATUS.attending);
   const declined = party.guests.filter((guest) => guest.rsvpStatus === RSVP_STATUS.declined);
-  const hasAddedGuests = party.guests.some((guest) => guest.source === GUEST_SOURCE.guestAdded);
 
   return (
     <section className='w-full'>
@@ -58,12 +57,6 @@ export const RsvpConfirmation: React.FC<RsvpConfirmationProps> = ({ party, onEdi
           <p className={SECTION_LABEL_CLASS}>Your message</p>
           <p className='mt-2 text-sage-800'>{party.message}</p>
         </div>
-      )}
-
-      {hasAddedGuests && (
-        <p className='mt-6 text-sm text-sage-700'>
-          Guests you added are reviewed by the couple before they are final.
-        </p>
       )}
 
       <button

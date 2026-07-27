@@ -89,20 +89,21 @@ export const PartyForm: React.FC<PartyFormProps> = ({
         />
       ))}
 
+      {/*
+        Deliberately understated, and never showing a remaining count: adding a
+        guest is an exception, not an allowance to spend. The control disappears
+        once the party's cap is reached.
+      */}
       {remainingAdditions > 0 && (
-        <>
+        <div className='mt-6 text-center'>
           <button
             type='button'
             onClick={addNewGuest}
-            className='mt-5 w-full rounded-md border border-dashed border-sage-200 px-4 py-3 text-sm text-sage-700 transition-colors hover:border-sage-700'
+            className='text-sm text-sage-700 underline transition-colors hover:text-sage-800'
           >
-            + Add a guest ({remainingAdditions} left)
+            Add a guest
           </button>
-
-          <p className='mt-3 text-xs text-sage-700/80'>
-            Guests you add are reviewed by the couple, and can only be removed by them.
-          </p>
-        </>
+        </div>
       )}
 
       <div className='mt-8'>

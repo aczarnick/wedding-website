@@ -97,17 +97,24 @@ describe('PartyForm', () => {
     });
   });
 
-  it('counts down the remaining additions and hides the control at the cap', () => {
+  it('hides the add-guest control once the cap is reached', () => {
     renderForm();
     const addButton = () => screen.queryByRole('button', { name: /add a guest/i });
 
-    expect(addButton()).toHaveTextContent('2 left');
+    expect(addButton()).toBeInTheDocument();
 
     fireEvent.click(addButton()!);
-    expect(addButton()).toHaveTextContent('1 left');
+    expect(addButton()).toBeInTheDocument();
 
     fireEvent.click(addButton()!);
     expect(addButton()).not.toBeInTheDocument();
+  });
+
+  it('never advertises how many guests remain to be added', () => {
+    renderForm({ party: party({ addedGuestsRemaining: 4 }) });
+
+    expect(screen.getByRole('button', { name: /add a guest/i })).toHaveTextContent(/^Add a guest$/);
+    expect(screen.queryByText(/\d+ left/i)).not.toBeInTheDocument();
   });
 
   it('never offers to add a guest when no additions remain', () => {
@@ -125,7 +132,7 @@ describe('PartyForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove additional guest 1' }));
 
     expect(screen.queryByText('Additional guest 1')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /add a guest/i })).toHaveTextContent('2 left');
+    expect(screen.getByRole('button', { name: /add a guest/i })).toBeInTheDocument();
   });
 
   it('blocks submission until an added guest is complete', () => {
@@ -136,12 +143,6 @@ describe('PartyForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /add a guest/i }));
 
     expect(screen.getByRole('button', { name: /submit rsvp/i })).toBeDisabled();
-  });
-
-  it('warns that added guests are reviewed by the couple', () => {
-    renderForm();
-
-    expect(screen.getByText(/reviewed by the couple/i)).toBeInTheDocument();
   });
 
   it('renders a notice and an error when given them', () => {

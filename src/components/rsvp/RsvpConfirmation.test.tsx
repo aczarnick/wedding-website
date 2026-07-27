@@ -31,7 +31,7 @@ describe('RsvpConfirmation', () => {
     expect(screen.getByText('Can not wait!')).toBeInTheDocument();
   });
 
-  it('flags added guests as awaiting review', () => {
+  it('lists an added guest without singling them out for review', () => {
     render(
       <RsvpConfirmation
         party={{
@@ -42,13 +42,8 @@ describe('RsvpConfirmation', () => {
       />,
     );
 
-    expect(screen.getByText(/reviewed by the couple/i)).toBeInTheDocument();
-  });
-
-  it('says nothing about review when the party added nobody', () => {
-    render(<RsvpConfirmation party={PARTY} onEdit={vi.fn()} />);
-
-    expect(screen.queryByText(/reviewed by the couple/i)).not.toBeInTheDocument();
+    expect(screen.getByText('John Smith')).toBeInTheDocument();
+    expect(screen.queryByText(/review/i)).not.toBeInTheDocument();
   });
 
   it('reopens the editor on request', () => {
