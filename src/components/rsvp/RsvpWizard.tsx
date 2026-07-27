@@ -26,6 +26,8 @@ const LOOKUP_START: WizardState = { step: 'lookup', errorMessage: null, showNotF
 
 const PARTY_CHANGED_NOTICE =
   'Your party was updated by the couple, so we reloaded it. Please check the answers below and submit again.';
+const CAP_EXCEEDED_NOTICE =
+  'The couple changed how many guests you can add, so we reloaded your invitation. Please check the answers below and submit again.';
 const PARTY_MISSING_MESSAGE =
   'That invitation is no longer available. Please contact the bride or groom.';
 const UNEXPECTED_MESSAGE = 'Something went wrong. Please try again.';
@@ -45,6 +47,14 @@ const lookupWithError = (message: string): WizardState => ({
   errorMessage: message,
   showNotFound: false,
 });
+
+/**
+ * Server errors (5xx) are operator language, not guidance for a guest, so
+ * they are replaced with the generic message. Everything else (validation
+ * errors like `invalid_request`) is genuinely useful and passes through.
+ */
+const userMessage = (error: RsvpApiError): string =>
+  error.status >= 500 ? UNEXPECTED_MESSAGE : error.message;
 
 /**
  * Maps the two error codes that resolve identically from every call site —
@@ -89,7 +99,7 @@ export const RsvpWizard: React.FC = () => {
       }
 
       const error = asApiError(caught);
-      setState(mapError(error, (resolvedError) => lookupWithError(resolvedError.message)));
+      setState(mapError(error, (resolvedError) => lookupWithError(userMessage(resolvedError))));
     } finally {
       if (openPartyRequestId.current === requestId) {
         setIsBusy(false);
@@ -98,6 +108,7 @@ export const RsvpWizard: React.FC = () => {
   };
 
   const handleSearch = async (query: string) => {
+    setState(LOOKUP_START);
     setIsBusy(true);
 
     try {
@@ -116,7 +127,7 @@ export const RsvpWizard: React.FC = () => {
       setState({ step: 'picking', matches });
     } catch (caught) {
       const error = asApiError(caught);
-      setState(mapError(error, (resolvedError) => lookupWithError(resolvedError.message)));
+      setState(mapError(error, (resolvedError) => lookupWithError(userMessage(resolvedError))));
     } finally {
       setIsBusy(false);
     }
@@ -128,7 +139,8 @@ export const RsvpWizard: React.FC = () => {
       setState({
         step: 'editing',
         party: refreshed,
-        notice: conflict.code === 'party_changed' ? PARTY_CHANGED_NOTICE : conflict.message,
+        notice:
+          conflict.code === 'party_changed' ? PARTY_CHANGED_NOTICE : CAP_EXCEEDED_NOTICE,
         errorMessage: null,
         formKey: formKey + 1,
       });
@@ -139,7 +151,7 @@ export const RsvpWizard: React.FC = () => {
           step: 'editing',
           party,
           notice: null,
-          errorMessage: resolvedError.message,
+          errorMessage: userMessage(resolvedError),
           formKey,
         })),
       );
@@ -170,7 +182,7 @@ export const RsvpWizard: React.FC = () => {
           step: 'editing',
           party,
           notice: null,
-          errorMessage: resolvedError.message,
+          errorMessage: userMessage(resolvedError),
           formKey,
         })),
       );

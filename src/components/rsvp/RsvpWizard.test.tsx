@@ -208,6 +208,30 @@ describe('RsvpWizard', () => {
     expect(screen.getByRole('button', { name: /submit rsvp/i })).toBeDisabled();
   });
 
+  it('reloads the party and warns when the add-guest cap changed underneath', async () => {
+    searchPartiesMock.mockResolvedValue([
+      { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
+    ]);
+    fetchPartyMock.mockResolvedValueOnce(PARTY).mockResolvedValueOnce(PARTY);
+    submitRsvpMock.mockRejectedValue(
+      new RsvpApiError(409, 'add_guest_cap_exceeded', 'This party can add at most 2 guests.', {
+        cap: 2,
+        remaining: 0,
+      }),
+    );
+    render(<RsvpWizard />);
+
+    search();
+    await screen.findByRole('button', { name: /submit rsvp/i });
+    answer('John Smith', 'Attending');
+    fireEvent.click(screen.getByRole('button', { name: /submit rsvp/i }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /changed how many guests you can add/i,
+    );
+    expect(screen.getByRole('button', { name: /submit rsvp/i })).toBeDisabled();
+  });
+
   it('keeps the draft when the conflict refetch fails for an unrelated reason', async () => {
     searchPartiesMock.mockResolvedValue([
       { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
@@ -225,7 +249,7 @@ describe('RsvpWizard', () => {
     answer('John Smith', 'Attending');
     fireEvent.click(screen.getByRole('button', { name: /submit rsvp/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/something broke over there/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/something went wrong/i);
     expect(screen.getByRole('radio', { name: 'Attending' })).toBeChecked();
     expect(screen.getByRole('button', { name: /submit rsvp/i })).not.toBeDisabled();
   });

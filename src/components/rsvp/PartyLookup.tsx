@@ -58,7 +58,7 @@ export const PartyLookup: React.FC<PartyLookupProps> = ({
       </form>
 
       {showNotFound && (
-        <p className='mt-6 text-center text-sm text-sage-700'>
+        <p role='status' className='mt-6 text-center text-sm text-sage-700'>
           We could not find that name on our guest list. Please double-check the spelling, or
           contact the bride or groom and we will get you sorted.
         </p>

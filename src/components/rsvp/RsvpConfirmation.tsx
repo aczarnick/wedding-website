@@ -7,6 +7,8 @@ interface RsvpConfirmationProps {
   onEdit: () => void;
 }
 
+const SECTION_LABEL_CLASS = 'text-sm uppercase tracking-[0.2em] text-sage-700/70';
+
 const fullName = (guest: PartyDetailGuest): string => `${guest.firstName} ${guest.lastName}`;
 
 const GuestList: React.FC<{ heading: string; guests: PartyDetailGuest[] }> = ({
@@ -19,7 +21,7 @@ const GuestList: React.FC<{ heading: string; guests: PartyDetailGuest[] }> = ({
 
   return (
     <div className='mt-6'>
-      <p className='text-sm uppercase tracking-[0.2em] text-sage-700/70'>{heading}</p>
+      <p className={SECTION_LABEL_CLASS}>{heading}</p>
       <ul className='mt-2 space-y-1'>
         {guests.map((guest) => (
           <li key={guest.id} className='text-sage-800'>
@@ -52,7 +54,7 @@ export const RsvpConfirmation: React.FC<RsvpConfirmationProps> = ({ party, onEdi
 
       {party.message && (
         <div className='mt-6'>
-          <p className='text-sm uppercase tracking-[0.2em] text-sage-700/70'>Your message</p>
+          <p className={SECTION_LABEL_CLASS}>Your message</p>
           <p className='mt-2 text-sage-800'>{party.message}</p>
         </div>
       )}

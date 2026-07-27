@@ -92,18 +92,20 @@ export const PartyForm: React.FC<PartyFormProps> = ({
       ))}
 
       {remainingAdditions > 0 && (
-        <button
-          type='button'
-          onClick={addNewGuest}
-          className='mt-5 w-full rounded-md border border-dashed border-sage-200 px-4 py-3 text-sm text-sage-700 transition-colors hover:border-sage-700'
-        >
-          + Add a guest ({remainingAdditions} left)
-        </button>
-      )}
+        <>
+          <button
+            type='button'
+            onClick={addNewGuest}
+            className='mt-5 w-full rounded-md border border-dashed border-sage-200 px-4 py-3 text-sm text-sage-700 transition-colors hover:border-sage-700'
+          >
+            + Add a guest ({remainingAdditions} left)
+          </button>
 
-      <p className='mt-3 text-xs text-sage-700/80'>
-        Guests you add are reviewed by the couple, and can only be removed by them.
-      </p>
+          <p className='mt-3 text-xs text-sage-700/80'>
+            Guests you add are reviewed by the couple, and can only be removed by them.
+          </p>
+        </>
+      )}
 
       <div className='mt-8'>
         <label className='text-sm text-sage-700' htmlFor='party-message'>

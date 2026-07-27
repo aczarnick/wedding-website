@@ -19,8 +19,6 @@ export const GUEST_ORDER: Prisma.GuestOrderByWithRelationInput[] = [
   { id: 'asc' },
 ];
 
-export type { PartyDetail, PartyDetailGuest, PartySearchResult };
-
 /**
  * Loads the singleton settings row, failing loudly if it is missing rather
  * than letting callers guess at a default. Accepts either the top-level
