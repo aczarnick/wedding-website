@@ -2,6 +2,8 @@ import { z, type ZodError } from 'zod';
 
 export type RsvpErrorCode =
   | 'invalid_request'
+  | 'invalid_csv'
+  | 'csv_too_large'
   | 'rsvp_closed'
   | 'party_not_found'
   | 'party_changed'
@@ -30,6 +32,12 @@ export class RsvpError extends Error {
   }
 }
 
+/** A single problem found in the import file, addressed by 1-based file line. */
+export interface RowError {
+  line: number;
+  reason: string;
+}
+
 /**
  * Renders an `RsvpError` as a JSON response. Anything else is rethrown rather
  * than masked, so an unexpected failure surfaces as a 500 instead of a
@@ -53,4 +61,30 @@ export function invalidRequest(error: ZodError): RsvpError {
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
   return new RsvpError(400, 'invalid_request', message, hasFieldErrors ? { fieldErrors } : {});
+}
+
+/**
+ * Rejects an import, reporting every bad row. The zero counters are always
+ * present so a client reads the same two fields on success and on failure.
+ * The message counts distinct invalid *lines* rather than error count: one
+ * row can fail two rules at once, and "2 invalid rows" would overstate a
+ * single bad row.
+ */
+export function invalidCsv(rowErrors: RowError[]): RsvpError {
+  const invalidLineCount = new Set(rowErrors.map((error) => error.line)).size;
+  const noun = invalidLineCount === 1 ? 'row' : 'rows';
+
+  return new RsvpError(
+    400,
+    'invalid_csv',
+    `Import rejected: ${invalidLineCount} invalid ${noun}`,
+    { rowErrors, partiesCreated: 0, guestsCreated: 0 },
+  );
+}
+
+export function csvTooLarge(message: string): RsvpError {
+  return new RsvpError(413, 'csv_too_large', message, {
+    partiesCreated: 0,
+    guestsCreated: 0,
+  });
 }

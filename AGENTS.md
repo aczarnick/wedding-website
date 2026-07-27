@@ -88,6 +88,22 @@ Admins deliberately bypass the RSVP deadline: `requireRsvpOpen()` (`src/lib/rsvp
 
 Design: `docs/superpowers/specs/2026-07-26-rsvp-admin-api-design.md`.
 
+### Admin CSV import/export
+
+`POST /api/admin/import` takes a raw `text/csv` body; `GET /api/admin/export` returns one CSV row per guest. Both sit behind `src/proxy.ts` **and** call `requireAdminSession()` — the matcher is not the only gate, and import needs the session email for the audit trail. Neither is gated on `Settings.rsvpDeadline`: export exists to be run after it.
+
+Both obey the soft-delete rule above: the export filters `deletedAt: null` on parties *and* guests, so a removed guest never reaches the caterer, and import's collision check considers only live parties — a soft-deleted display name is free to reuse, matching the fact that a deleted party is invisible everywhere else.
+
+Import is **create-only and all-or-nothing**. A live display name that already exists is a reported row error, so a re-import can never overwrite a party that has responded. Created guests are forced to `pending` / `source=admin` / `flaggedForReview=false` regardless of the file, and unknown columns are ignored — together that makes re-feeding an export harmless.
+
+Rows are grouped by `normalizeName(partyDisplayName).toLowerCase()`, matching the database's case-insensitive collation. `message` and `addGuestCap` are party-level: blank inherits, two different non-blank values conflict.
+
+Error reports carry `{ line, reason }` for **every** bad row. The line number comes from `csv-parse`'s `info.lines`, never from an array index — a quoted field containing a newline spans several file lines and would desynchronize a counter.
+
+Export escapes leading formula characters (`escape_formulas`) because song requests and messages are guest-supplied text that lands in a spreadsheet, and emits a UTF-8 BOM so Excel reads it correctly. `csv-stringify` casts booleans to `1`/`''` by default, so `flaggedForReview` uses an explicit cast. Import strips one leading `'` when a formula trigger follows it, so the export→import round trip is lossless.
+
+Design: `docs/superpowers/specs/2026-07-26-rsvp-csv-import-export-design.md`.
+
 ## Conventions
 
 - Tailwind utility classes only; no custom CSS components. Custom sage palette (`sage-50`…`sage-800`) and the Playfair Display font (`font-serif`) are defined in `src/app/globals.css` via `@theme inline`

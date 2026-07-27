@@ -23,6 +23,8 @@
   "dependencies": {
     "@prisma/adapter-mssql": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "csv-parse": "^7.0.1",
+    "csv-stringify": "^6.8.1",
     "mssql": "^12.7.0",
     "next": "^16.2.10",
     "next-auth": "5.0.0-beta.32",
