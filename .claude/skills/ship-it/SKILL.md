@@ -256,6 +256,13 @@ Run a code review over the diff and auto-apply its fixes:
 /code-review high --fix
 ```
 
+**Know which review path applies.** The `/code-review` skill is written around an
+*already-open* PR — it fetches with `gh`, fans out scoring agents, and comments
+back on the PR. Phase 7 runs before the push, so there is no PR to fetch. Review
+the branch diff directly (inline is right for a small diff; the skill's full flow
+is for reviewing an open PR later). Say which path you took rather than reporting
+`/code-review` output you did not produce.
+
 Capture each finding's outcome (`fixed` / `skipped`) — these feed the PR body.
 Because fixes can break the build, **re-run the Phase 6 fast gate** after review.
 Then run the one-time CI-parity check before shipping:
@@ -299,6 +306,41 @@ Closes #<n>
 Fixed: <finding> …
 Left open (your call): <finding that review skipped> …
 ```
+
+**Any UI-visible change ships with screenshots in the PR.** The Phase 6 browser
+proof already produced them; a reviewer should not have to run the branch to see
+what changed. Include the states that carry the change — desktop, mobile, and any
+opened/focused/empty state the diff touches — and prefer a before/after pair when
+the change modifies existing UI rather than adding new UI.
+
+Neither `gh` nor the REST API can attach an image — Markdown needs a URL, and a
+local path renders as nothing. **This repo's convention** (established by PR #90)
+is to commit them and link by raw URL:
+
+```bash
+mkdir -p docs/screenshots/<feature>          # NN-name.png, numbered in reading order
+git add docs && git commit -m "Add PR screenshots (#<n>)"
+git push                                      # push BEFORE building the body
+sha=$(git rev-parse HEAD)                     # raw URLs need the pushed sha
+# https://raw.githubusercontent.com/<owner>/<repo>/$sha/docs/screenshots/<feature>/01-….png
+```
+
+The sha must be the **pushed** commit, so the order is commit → push → read
+`rev-parse` → write the body → `gh pr create` / `gh pr edit --body-file`. Verify
+each URL with `curl -o /dev/null -w '%{http_code}'` before publishing — a typo'd
+path renders as a broken image, not an error. Pair mobile shots side by side with
+`<img width="300">`; plain `![]()` for the rest.
+
+**Keep them small.** A full-bleed hero screenshot is ~2 MB of PNG and lives in git
+forever. Downscale (`sips -Z 900`), and convert photo-heavy shots to JPEG
+(`sips -s format jpeg -s formatOptions 80`) — that took 1.2 MB to 187 KB here, in
+line with the 17–400 KB range already on `master`. UI-chrome shots (drawers, nav
+bars, flat color) stay PNG. `check:images` only gates `public/images`, so nothing
+enforces this for you.
+
+Uploading through the GitHub web UI instead (canonical `user-attachments` URLs,
+zero repo footprint) requires the Claude browser extension; `tabs_context_mcp`
+reported it disconnected on 2026-07-27, so don't plan on it without checking first.
 
 Report the PR URL. The run ends here — the user reviews the PR. Leave the
 worktree in place (this repo keeps them; do not auto-remove).

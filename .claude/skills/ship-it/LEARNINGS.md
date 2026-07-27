@@ -79,27 +79,25 @@ lesson is folded into `SKILL.md` (or captured above), prune it.
 - **Verify a nav addition at the breakpoint where it first appears, not just at
   desktop and mobile widths.** A 7th header link is exactly the change that wraps
   at `md` (768px) while looking fine at 1280 and 390.
-- **UI PRs need screenshots — plan the hosting *before* Phase 8.** Now folded into
-  `SKILL.md` Phase 8. What cost this run: the shots existed from the Phase 6 browser
-  proof, but there was no way to attach them. `gh`/the REST API cannot upload an
-  image; the browser-upload path failed because the Claude Chrome extension was not
-  connected (`tabs_context_mcp` errors out — check this early, not at push time);
-  and the orphan-branch fallback's `git push` was denied by the permission
-  classifier. Result: a shipped UI PR with no visuals and a blocked follow-up.
+- **UI PRs need screenshots, and the `docs/screenshots/` + raw-URL convention is
+  now mandatory in Phase 8** — promoted there along with the issue #68 entry that
+  predicted this exact repeat. Cost this run: the PR shipped with no visuals, and
+  the recovery first chased two dead ends (the Claude Chrome extension is not
+  connected, so web-UI upload is unavailable; an orphan `screenshots` branch was
+  denied by the permission classifier) before finding that `master` already carried
+  `docs/screenshots/rsvp/` from PR #90. **Read the repo for an existing convention
+  before designing a new one** — `git ls-tree -r origin/master | grep screenshots`
+  would have answered it in one command.
+- **The working-directory drift above bit twice in one run**, the second time
+  writing `docs/screenshots/` into the main repo's `master` tree instead of the
+  branch worktree. Harmless because it was untracked, but a `git add -A` would have
+  committed screenshots to the wrong branch. `pwd` before any path-relative write.
 
 ### 2026-07-27 — issue #68 (admin dashboard shell)
 
-- **A UI PR needs its screenshots hosted before the push, and the repo already
-  has a convention.** `gh` cannot attach images, so PR #90 committed them to
-  `docs/screenshots/<feature>/` and linked them as
-  `raw.githubusercontent.com/<owner>/<repo>/<full-sha>/…`. That URL needs the
-  *pushed* commit sha, so the order is: commit screenshots → push → read
-  `git rev-parse HEAD` → build the body → `gh pr create`. `check:images` only
-  gates `public/images`, so screenshots there are not size-checked. Worth folding
-  into Phase 8 if the next UI issue repeats it.
-- The `/code-review` skill is written to fetch and comment on an existing GitHub
-  PR, but ship-it's Phase 7 runs *before* the PR exists. Reviewed the branch diff
-  directly instead. If this recurs, Phase 7 should say which review path to take.
+Both findings recurred on issue #71 and are now folded into `SKILL.md` — the
+`docs/screenshots/` + full-sha raw-URL convention (Phase 8) and the `/code-review`
+skill assuming an already-open PR (Phase 7). No pending items.
 
 ### 2026-07-27 — issue #67 (guest RSVP wizard UI)
 
