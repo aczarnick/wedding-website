@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { PrismaClient } from '@/generated/prisma/client';
+import { PrismaClient, type Prisma } from '@/generated/prisma/client';
 import { PrismaMssql } from '@prisma/adapter-mssql';
 import { ACTOR_TYPE, AUDIT_ACTION, GUEST_SOURCE, RSVP_STATUS } from '@/lib/enums';
 import { RsvpError } from '@/lib/rsvp/errors';
@@ -10,6 +10,63 @@ import { seedDatabase } from '../../prisma/seed-data';
 const databaseUrl = process.env.DATABASE_URL;
 const HEADER = 'partyDisplayName,firstName,lastName,message,addGuestCap';
 const ACTOR = 'admin@example.com';
+
+/** Lets one `party.create` through, then rejects every call after it. */
+function failAfterFirstCreate(party: Prisma.TransactionClient['party']): Prisma.TransactionClient['party'] {
+  let creates = 0;
+
+  return new Proxy(party, {
+    get(target, property, receiver) {
+      if (property !== 'create') {
+        return Reflect.get(target, property, receiver);
+      }
+
+      return (...args: Parameters<typeof target.create>) => {
+        creates += 1;
+        return creates >= 2
+          ? Promise.reject(new Error('simulated failure on the second party.create'))
+          : Reflect.apply(target.create, target, args);
+      };
+    },
+  });
+}
+
+/**
+ * Wraps a real Prisma client so the transaction handed to `importParties`
+ * fails partway through, on the second `party.create`. Proves the
+ * all-or-nothing guarantee holds after writes are already underway, not just
+ * when validation rejects before `$transaction` opens.
+ */
+function withSecondPartyCreateFailing(client: PrismaClient): PrismaClient {
+  return new Proxy(client, {
+    get(target, property, receiver) {
+      if (property !== '$transaction') {
+        return Reflect.get(target, property, receiver);
+      }
+
+      return (callback: (tx: Prisma.TransactionClient) => unknown, options?: unknown) =>
+        Reflect.apply(target.$transaction, target, [
+          (tx: Prisma.TransactionClient) => {
+            // Wrapped once per transaction attempt: the `party.create` counter must
+            // persist across every `tx.party` access within the same run, not reset
+            // each time the property is read.
+            const wrappedParty = failAfterFirstCreate(tx.party);
+
+            return callback(
+              new Proxy(tx, {
+                get(txTarget, txProperty, txReceiver) {
+                  return txProperty === 'party'
+                    ? wrappedParty
+                    : Reflect.get(txTarget, txProperty, txReceiver);
+                },
+              }),
+            );
+          },
+          options,
+        ]);
+    },
+  }) as PrismaClient;
+}
 
 describe.skipIf(!databaseUrl)('importParties', () => {
   const prisma = new PrismaClient({ adapter: new PrismaMssql(databaseUrl!) });
@@ -124,6 +181,27 @@ describe.skipIf(!databaseUrl)('importParties', () => {
     );
 
     expect(await prisma.party.count()).toBe(before);
+  });
+
+  it('rolls back every write when a later party fails mid-transaction', async () => {
+    const partiesBefore = await prisma.party.count();
+    const guestsBefore = await prisma.guest.count();
+    expect(partiesBefore).toBe(3);
+    expect(guestsBefore).toBe(5);
+
+    const failingClient = withSecondPartyCreateFailing(prisma);
+
+    await expect(
+      importParties(
+        failingClient,
+        `${HEADER}\nThe Brown Family,Ada,Brown,,\nThe Green Family,Zed,Green,,\n`,
+        ACTOR,
+        '203.0.113.7',
+      ),
+    ).rejects.toThrow('simulated failure on the second party.create');
+
+    expect(await prisma.party.count()).toBe(partiesBefore);
+    expect(await prisma.guest.count()).toBe(guestsBefore);
   });
 
   it('rejects a file over the row limit', async () => {
