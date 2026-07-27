@@ -19,6 +19,7 @@ export interface SummaryStats {
   flagged: number;
 }
 
+/** Spelled out rather than derived from `RSVP_STATUS` so a new status fails the build here. */
 function emptyStatusCounts(): Record<RsvpStatus, number> {
   return { pending: 0, attending: 0, declined: 0 };
 }
@@ -37,14 +38,14 @@ export async function getSummaryStats(client: PrismaClient): Promise<SummaryStat
   const counts = emptyStatusCounts();
 
   for (const group of byStatus) {
-    if (group.rsvpStatus in counts) {
+    if (Object.hasOwn(counts, group.rsvpStatus)) {
       counts[group.rsvpStatus as RsvpStatus] = group._count._all;
     }
   }
 
   return {
     parties,
-    invited: counts[RSVP_STATUS.attending] + counts[RSVP_STATUS.declined] + counts[RSVP_STATUS.pending],
+    invited: Object.values(counts).reduce((total, count) => total + count, 0),
     attending: counts[RSVP_STATUS.attending],
     declined: counts[RSVP_STATUS.declined],
     pending: counts[RSVP_STATUS.pending],
