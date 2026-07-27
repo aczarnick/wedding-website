@@ -1725,8 +1725,8 @@ export async function updateGuest(
 }
 
 /**
- * Marks a guest deleted. As with parties, a hard delete is blocked by the
- * change log's non-nullable foreign key.
+ * Marks a guest deleted. As with parties, a hard delete is blocked whenever
+ * change-log rows reference the guest: that foreign key is `onDelete: NoAction`.
  */
 export async function softDeleteGuest(
   client: PrismaClient,
