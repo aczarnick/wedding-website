@@ -47,6 +47,43 @@ Cross-cutting traps that cost a run real time but belong to no single phase.
 Append a dated bullet when a run hits friction the skill didn't anticipate. Once a
 lesson is folded into `SKILL.md` (or captured above), prune it.
 
+### 2026-07-27 — issue #67 (guest RSVP wizard UI)
+
+First UI-heavy run, so the browser step carried the weight the gate could not.
+The reviewer-model finding is folded into `SKILL.md` (Phase 5); these are the
+UI-verification lessons the skill did not anticipate.
+
+- **A mouse-driven browser pass structurally cannot catch keyboard-only
+  defects.** A status toggle hid its radio with `sr-only`, so the focus ring
+  landed on a 1×1 clipped box and a keyboard guest had no idea which row they
+  were on — WCAG 2.4.7, invisible to 292 tests and to the whole Playwright flow,
+  caught only by a reviewer reading markup. Worse, the first fix *looked* applied
+  and still wasn't visible: `ring-sage-700` on `bg-sage-700` is a ring the exact
+  color of the thing it rings. Any control that visually hides its input owes an
+  explicit keyboard pass — `Tab` to it, assert `:focus-visible` matches, and read
+  the computed `box-shadow`, because a screenshot of a mouse-driven run will not
+  show you the problem or the fix.
+- **A screenshot taken mid-`transition-colors` lies.** A toggle rendered grey in
+  a full-page shot and looked like a real styling bug; a computed-style probe run
+  immediately after the click appeared to confirm it. Both were sampling the
+  interpolated value — settling 400 ms first showed every toggle at the correct
+  `rgb(53,82,67)`. Settle before capturing, and re-probe after a delay before
+  reporting any apparent visual defect.
+- **The seed cannot reach every UI state.** The disambiguation picker needs two
+  parties sharing a guest's full name, and the seed has none, so that screen was
+  unreachable in the browser. Create the fixture temporarily, verify, then
+  `db:seed` to restore — the same mutate-and-restore discipline the deadline
+  check already needs.
+- **Two Playwright locator traps in this app.** `getByText('Additional guest 1')`
+  matches the heading, the remove button, *and* an `sr-only` legend — pass
+  `{ exact: true }`. And an added-guest row nests its name one level deeper than
+  a party-guest row, so `.closest('div')` / `.last()` resolve to different
+  elements for the two; anchor on the row that also contains radios.
+- **Refresh every screenshot a change invalidates, not just the obvious one.**
+  De-emphasizing a control updated the desktop shots; the mobile shot still
+  advertised the old "(4 left)" copy in the PR for a commit and a half. `git log
+  -1 -- <file>` per image tells you which ones predate the change.
+
 ### 2026-07-27 — issue #66 (CSV import/export)
 
 All findings folded into `SKILL.md` — confirming a dependency is merged rather
