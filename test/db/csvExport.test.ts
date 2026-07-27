@@ -56,4 +56,22 @@ describe.skipIf(!databaseUrl)('loadExportRecords', () => {
       songRequest: 'Sweet Caroline',
     });
   });
+
+  it('omits a soft-deleted guest', async () => {
+    const guest = await prisma.guest.findFirstOrThrow();
+    await prisma.guest.update({ where: { id: guest.id }, data: { deletedAt: new Date() } });
+
+    const records = await loadExportRecords(prisma);
+
+    expect(records.find((record) => record.guestId === guest.id)).toBeUndefined();
+  });
+
+  it('omits every guest of a soft-deleted party', async () => {
+    const party = await prisma.party.findFirstOrThrow({ include: { guests: true } });
+    await prisma.party.update({ where: { id: party.id }, data: { deletedAt: new Date() } });
+
+    const records = await loadExportRecords(prisma);
+
+    expect(records.filter((record) => record.partyId === party.id)).toEqual([]);
+  });
 });

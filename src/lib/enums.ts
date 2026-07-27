@@ -20,6 +20,7 @@ export type ActorType = (typeof ACTOR_TYPE)[keyof typeof ACTOR_TYPE];
 export const AUDIT_ACTION = {
   partyCreated: 'party_created',
   partyUpdated: 'party_updated',
+  partyDeleted: 'party_deleted',
   guestCreated: 'guest_created',
   guestUpdated: 'guest_updated',
   guestDeleted: 'guest_deleted',

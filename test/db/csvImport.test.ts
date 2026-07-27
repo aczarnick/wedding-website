@@ -197,6 +197,24 @@ describe.skipIf(!databaseUrl)('importParties', () => {
     expect((error.details.rowErrors as { reason: string }[])[0].reason).toContain('already exists');
   });
 
+  it('lets a soft-deleted display name be reused', async () => {
+    const smiths = await prisma.party.findFirstOrThrow({
+      where: { displayName: 'The Smith Family' },
+    });
+    await prisma.party.update({ where: { id: smiths.id }, data: { deletedAt: new Date() } });
+
+    const summary = await importText(`${HEADER}\nThe Smith Family,Ada,Brown,,\n`);
+
+    expect(summary).toEqual({ partiesCreated: 1, guestsCreated: 1 });
+
+    const live = await prisma.party.findMany({
+      where: { displayName: 'The Smith Family', deletedAt: null },
+    });
+
+    expect(live).toHaveLength(1);
+    expect(live[0].id).not.toBe(smiths.id);
+  });
+
   it('writes nothing when one party of several collides', async () => {
     const before = await prisma.party.count();
 

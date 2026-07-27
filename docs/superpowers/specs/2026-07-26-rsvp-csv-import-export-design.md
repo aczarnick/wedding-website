@@ -155,8 +155,23 @@ row, its `Guest` rows, and **one** `AuditEntry`:
 - `before` = `null` (nothing existed), `after` = the created party snapshot
 - `ipAddress` from the existing `clientIpAddress(request)`
 
-One entry per party rather than per batch because `AuditEntry.partyId` is
-non-nullable — a batch-level entry has nowhere to live.
+One entry per party rather than per batch. This was originally forced —
+`AuditEntry.partyId` was non-nullable, so a batch-level row had nowhere to live —
+but #65 made the column nullable to hold settings changes, so the constraint is
+gone. The grain stays per-party on its merits: the change log is browsable by
+party, and an import entry sits alongside that party's later RSVP and admin
+edits instead of in a batch record nothing else links to.
+
+### Interaction with soft delete
+
+#65 added `deletedAt` to `Party` and `Guest`, making `deletedAt: null` a filter
+every read must apply. Both endpoints obey it:
+
+- **Export** filters soft-deleted parties *and* guests. This file goes to the
+  caterer; a removed guest reappearing in it becomes a headcount.
+- **Import's collision check** considers only live parties, so a soft-deleted
+  display name is free to reuse. Blocking on one would be a collision the admin
+  cannot see or clear — the party is invisible to every other surface.
 
 ## Export contract
 

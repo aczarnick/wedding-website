@@ -16,7 +16,7 @@ For changes under `infra/terraform/`, CI additionally enforces `terraform fmt -c
 
 ## Architecture
 
-Wedding website (wedding date: October 10, 2026, hardcoded in `src/utils/dateUtils.ts`) built with Next.js 16 App Router + React 19 + TypeScript strict mode + Tailwind CSS v4. No backend API — all content is static data in `src/constants/*`.
+Wedding website (wedding date: October 10, 2026, hardcoded in `src/utils/dateUtils.ts`) built with Next.js 16 App Router + React 19 + TypeScript strict mode + Tailwind CSS v4. The public site itself is static data in `src/constants/*`; the RSVP wizard and the admin console it feeds are backed by a SQL Server database via Prisma, documented in the API sections below.
 
 ### Data-driven page composition
 
@@ -68,17 +68,39 @@ The database-integration tests under `test/db/` reset the same tables, so `vites
 
 Design: `docs/superpowers/specs/2026-07-26-rsvp-guest-api-design.md`.
 
+### Admin API
+
+`/api/admin/*` is gated twice. `src/proxy.ts` rejects unauthenticated or de-allowlisted requests before any admin code runs, and every handler *also* calls `handleAdminRequest()` (`src/lib/admin/route.ts`), which independently resolves the session via `requireAdminSession()`. That's not belt-and-braces: the resolved email is what `writeAuditEntry` attributes the change to, so a handler cannot accidentally omit it. `handleAdminRequest` supplies the Prisma client, `actorEmail`, and `ipAddress` (via `clientIpAddress()`) to the handler, maps thrown `RsvpError`s to a response via `errorResponse`, and JSON-encodes the result. `parseJsonBody()` in the same file reads and Zod-validates the request body, returning **400 `invalid_request`** on malformed JSON or a failed schema — unlike the guest routes, which call `request.json()` unguarded and 500 on bad input; that's a known, separate gap this task didn't touch.
+
+Endpoints (all Zod-validated against `src/lib/admin/schemas.ts`):
+
+- `GET/POST /api/admin/parties`, `GET/PATCH/DELETE /api/admin/parties/:id`
+- `GET/POST /api/admin/guests`, `GET/PATCH/DELETE /api/admin/guests/:id`
+- `POST /api/admin/guests/:id/moderate` — approve or remove a flagged guest-added plus-one
+- `GET/PATCH /api/admin/settings`
+- `GET /api/admin/audit` — paginated change log, filterable by `partyId`, `guestId`, `action`
+
+Every `DELETE` is a **soft delete**: `Party.deletedAt`/`Guest.deletedAt` get set rather than the row being removed, because a hard delete would violate the `AuditEntry` foreign key (`onDelete: NoAction`) once the row has change-log history. This makes `deletedAt: null` a filter every party/guest read must apply — in the admin API and the guest-facing `/api/parties/*` alike — or a "deleted" row reappears, including in the guest-facing RSVP wizard. Since `deletedAt` isn't a unique column, those lookups use `findFirst`, not `findUnique` (see `loadParty`/`loadGuest` in `src/lib/admin/parties.ts`/`guests.ts`).
+
+Services (`src/lib/admin/{parties,guests,settings}.ts`) take `(client, audit, ...)` for writes and `(client, ...)` for reads; `AdminParty`/`AdminGuest` projections live once in `src/lib/admin/projections.ts` and are reused for both API responses and audit snapshots. Every mutation writes an `AuditEntry` (`writeAuditEntry` in `src/lib/admin/audit-log.ts`) inside the same `$transaction` as the write it describes, so an audit row exists if and only if the write committed. A settings change has `partyId: null` since it belongs to no party — the reason `AuditEntry.partyId` is nullable in `prisma/schema.prisma`.
+
+Admins deliberately bypass the RSVP deadline: `requireRsvpOpen()` (`src/lib/rsvp/parties.ts`) is called only from the guest routes under `/api/parties/*`, never from an admin service, so parties and guests stay readable and editable from the admin console after `Settings.rsvpDeadline` passes.
+
+Design: `docs/superpowers/specs/2026-07-26-rsvp-admin-api-design.md`.
+
 ### Admin CSV import/export
 
 `POST /api/admin/import` takes a raw `text/csv` body; `GET /api/admin/export` returns one CSV row per guest. Both sit behind `src/proxy.ts` **and** call `requireAdminSession()` — the matcher is not the only gate, and import needs the session email for the audit trail. Neither is gated on `Settings.rsvpDeadline`: export exists to be run after it.
 
-Import is **create-only and all-or-nothing**. A display name that already exists is a reported row error, so a re-import can never overwrite a party that has responded. Created guests are forced to `pending` / `source=admin` / `flaggedForReview=false` regardless of the file, and unknown columns are ignored — together that makes re-feeding an export harmless.
+Both obey the soft-delete rule above: the export filters `deletedAt: null` on parties *and* guests, so a removed guest never reaches the caterer, and import's collision check considers only live parties — a soft-deleted display name is free to reuse, matching the fact that a deleted party is invisible everywhere else.
+
+Import is **create-only and all-or-nothing**. A live display name that already exists is a reported row error, so a re-import can never overwrite a party that has responded. Created guests are forced to `pending` / `source=admin` / `flaggedForReview=false` regardless of the file, and unknown columns are ignored — together that makes re-feeding an export harmless.
 
 Rows are grouped by `normalizeName(partyDisplayName).toLowerCase()`, matching the database's case-insensitive collation. `message` and `addGuestCap` are party-level: blank inherits, two different non-blank values conflict.
 
 Error reports carry `{ line, reason }` for **every** bad row. The line number comes from `csv-parse`'s `info.lines`, never from an array index — a quoted field containing a newline spans several file lines and would desynchronize a counter.
 
-Export escapes leading formula characters (`escape_formulas`) because song requests and messages are guest-supplied text that lands in a spreadsheet, and emits a UTF-8 BOM so Excel reads it correctly. `csv-stringify` casts booleans to `1`/`''` by default, so `flaggedForReview` uses an explicit cast.
+Export escapes leading formula characters (`escape_formulas`) because song requests and messages are guest-supplied text that lands in a spreadsheet, and emits a UTF-8 BOM so Excel reads it correctly. `csv-stringify` casts booleans to `1`/`''` by default, so `flaggedForReview` uses an explicit cast. Import strips one leading `'` when a formula trigger follows it, so the export→import round trip is lossless.
 
 Design: `docs/superpowers/specs/2026-07-26-rsvp-csv-import-export-design.md`.
 

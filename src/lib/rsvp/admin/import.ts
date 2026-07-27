@@ -36,16 +36,22 @@ async function loadDefaultAddGuestCap(
 }
 
 /**
- * Finds parties whose display name is already taken. Comparison is
- * case-insensitive by virtue of the database collation, so results are keyed
- * back to the file by lowercased name rather than by exact spelling.
+ * Finds parties whose display name is already taken by a **live** party.
+ * Comparison is case-insensitive by virtue of the database collation, so
+ * results are keyed back to the file by lowercased name rather than by exact
+ * spelling. A soft-deleted party does not reserve its name: it is invisible to
+ * every other read, so blocking a re-import on it would be a collision the
+ * admin cannot see or clear.
  */
 async function findCollisions(
   client: PrismaClient,
   parties: readonly ImportParty[],
 ): Promise<RowError[]> {
   const existing = await client.party.findMany({
-    where: { displayName: { in: parties.map((party) => party.displayName) } },
+    where: {
+      deletedAt: null,
+      displayName: { in: parties.map((party) => party.displayName) },
+    },
     select: { displayName: true },
   });
 

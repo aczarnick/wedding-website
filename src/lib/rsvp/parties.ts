@@ -5,7 +5,7 @@ import {
   checkAddGuestAllowance,
   countAddedGuests,
   diffGuestIds,
-  isPartyId,
+  isUuid,
   isRsvpOpen,
   nameSplitCandidates,
   toPartySnapshot,
@@ -44,16 +44,28 @@ export interface PartyDetail {
 }
 
 /**
- * Asserts the RSVP window is open and returns the deadline.
- * A missing settings row is a misconfiguration, not an open window, so it
- * fails loudly rather than defaulting either way.
+ * Loads the singleton settings row, failing loudly if it is missing rather
+ * than letting callers guess at a default. Accepts either the top-level
+ * client or a transaction client so callers inside a `$transaction` can
+ * share the same lookup.
  */
-export async function requireRsvpOpen(client: PrismaClient, now: Date = new Date()): Promise<Date> {
+export async function requireSettings(client: Pick<PrismaClient, 'settings'>) {
   const settings = await client.settings.findUnique({ where: { id: 1 } });
 
   if (!settings) {
     throw new RsvpError(500, 'settings_missing', 'RSVP settings are not configured');
   }
+
+  return settings;
+}
+
+/**
+ * Asserts the RSVP window is open and returns the deadline.
+ * A missing settings row is a misconfiguration, not an open window, so it
+ * fails loudly rather than defaulting either way.
+ */
+export async function requireRsvpOpen(client: PrismaClient, now: Date = new Date()): Promise<Date> {
+  const settings = await requireSettings(client);
 
   if (!isRsvpOpen(settings.rsvpDeadline, now)) {
     throw new RsvpError(403, 'rsvp_closed', 'RSVPs are closed', {
@@ -80,8 +92,10 @@ export async function searchParties(
   }
 
   const parties = await client.party.findMany({
-    where: { guests: { some: { OR: [...candidates] } } },
-    include: { guests: { select: { firstName: true }, orderBy: GUEST_ORDER } },
+    where: { deletedAt: null, guests: { some: { deletedAt: null, OR: [...candidates] } } },
+    include: {
+      guests: { where: { deletedAt: null }, select: { firstName: true }, orderBy: GUEST_ORDER },
+    },
     orderBy: { displayName: 'asc' },
   });
 
@@ -139,13 +153,13 @@ export async function getPartyDetail(
   partyId: string,
   deadline: Date,
 ): Promise<PartyDetail> {
-  if (!isPartyId(partyId)) {
+  if (!isUuid(partyId)) {
     throw new RsvpError(404, 'party_not_found', 'Party not found');
   }
 
-  const party = await client.party.findUnique({
-    where: { id: partyId },
-    include: { guests: { orderBy: GUEST_ORDER } },
+  const party = await client.party.findFirst({
+    where: { id: partyId, deletedAt: null },
+    include: { guests: { where: { deletedAt: null }, orderBy: GUEST_ORDER } },
   });
 
   if (!party) {
@@ -167,16 +181,16 @@ export async function submitRsvp(
   ipAddress: string | null,
   now: Date = new Date(),
 ): Promise<PartyDetail> {
-  if (!isPartyId(partyId)) {
+  if (!isUuid(partyId)) {
     throw new RsvpError(404, 'party_not_found', 'Party not found');
   }
 
   const deadline = await requireRsvpOpen(client, now);
 
   return client.$transaction(async (tx) => {
-    const party = await tx.party.findUnique({
-      where: { id: partyId },
-      include: { guests: { orderBy: GUEST_ORDER } },
+    const party = await tx.party.findFirst({
+      where: { id: partyId, deletedAt: null },
+      include: { guests: { where: { deletedAt: null }, orderBy: GUEST_ORDER } },
     });
 
     if (!party) {
@@ -245,7 +259,10 @@ export async function submitRsvp(
       addedGuests.push(created);
     }
 
-    const guestsAfter = await tx.guest.findMany({ where: { partyId }, orderBy: GUEST_ORDER });
+    const guestsAfter = await tx.guest.findMany({
+      where: { partyId, deletedAt: null },
+      orderBy: GUEST_ORDER,
+    });
     const after = toPartySnapshot(input.message, guestsAfter);
 
     await tx.auditEntry.create({
