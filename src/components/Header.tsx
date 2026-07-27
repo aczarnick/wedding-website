@@ -6,7 +6,7 @@ import { NAV_LINKS } from '@/constants/events';
 import { MobileNavLink } from './MobileNavLink';
 
 // Links that point to their own page rather than a hash-anchored section
-const ROUTE_LINKS = new Set<string>(['Registry', 'Gallery']);
+const ROUTE_LINKS = new Set<string>(['Registry', 'Gallery', 'RSVP']);
 
 const getHref = (link: string): string => {
   if (ROUTE_LINKS.has(link)) {

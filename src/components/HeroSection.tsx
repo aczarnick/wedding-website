@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Header } from './Header';
 import handhold from '../../public/images/trees-handhold.jpg';
 import { DaysUntilWedding } from '@/utils/dateUtils';
@@ -37,6 +38,12 @@ export const HeroSection: React.FC = () => {
         <h1 className='text-5xl sm:text-6xl mt-4'>Alex & Claire</h1>
         <p className='text-xl sm:text-2xl mt-6'>October 10, 2026 · Boone, IA</p> 
         <p className='text-xl sm:text-2xl mt-2'>{daysToGo}</p>
+        <Link
+          className='mt-10 rounded-full border border-white/70 bg-white/15 px-12 py-3 text-lg uppercase tracking-[0.3em] backdrop-blur-sm transition-colors hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white'
+          href='/rsvp'
+        >
+          RSVP
+        </Link>
       </div>
     </div>
   );

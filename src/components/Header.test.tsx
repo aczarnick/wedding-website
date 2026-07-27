@@ -9,6 +9,7 @@ const EXPECTED_HREFS: Record<(typeof NAV_LINKS)[number], string> = {
   FAQs: '/#FAQs',
   Registry: '/registry',
   Gallery: '/gallery',
+  RSVP: '/rsvp',
 };
 
 describe('Header', () => {
