@@ -256,4 +256,55 @@ describe.skipIf(!databaseUrl)('guest API services', () => {
       ).rejects.toMatchObject({ status: 403, code: 'rsvp_closed' });
     });
   });
+
+  describe('soft delete', () => {
+    it('hides a soft-deleted guest from the party detail', async () => {
+      const party = await smithParty();
+      const removed = party.guests[0];
+      await prisma.guest.update({ where: { id: removed.id }, data: { deletedAt: new Date() } });
+
+      const detail = await getPartyDetail(prisma, party.id, beforeDeadline);
+
+      expect(detail.guests.map((guest) => guest.id)).not.toContain(removed.id);
+    });
+
+    it('hides a soft-deleted party from search', async () => {
+      const party = await smithParty();
+      await prisma.party.update({ where: { id: party.id }, data: { deletedAt: new Date() } });
+
+      expect(await searchParties(prisma, 'John Smith')).toEqual([]);
+    });
+
+    it('treats a soft-deleted party as missing when reading detail', async () => {
+      const party = await smithParty();
+      await prisma.party.update({ where: { id: party.id }, data: { deletedAt: new Date() } });
+
+      await expect(getPartyDetail(prisma, party.id, beforeDeadline)).rejects.toMatchObject({
+        code: 'party_not_found',
+      });
+    });
+
+    it('rejects an RSVP submission for a soft-deleted party', async () => {
+      const party = await smithParty();
+      await prisma.party.update({ where: { id: party.id }, data: { deletedAt: new Date() } });
+
+      await expect(
+        submitRsvp(
+          prisma,
+          party.id,
+          {
+            message: null,
+            guests: party.guests.map((guest) => ({
+              id: guest.id,
+              rsvpStatus: RSVP_STATUS.attending,
+              songRequest: null,
+            })),
+            newGuests: [],
+          },
+          null,
+          beforeDeadline,
+        ),
+      ).rejects.toMatchObject({ code: 'party_not_found' });
+    });
+  });
 });

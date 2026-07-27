@@ -62,8 +62,8 @@ export function isRsvpOpen(deadline: Date, now: Date): boolean {
   return now.getTime() < deadline.getTime();
 }
 
-/** True when the value is a canonical UUID, the only shape a party id can take. */
-export function isPartyId(value: string): boolean {
+/** True when the value is a canonical UUID, the shape of every party and guest id. */
+export function isUuid(value: string): boolean {
   return UUID_PATTERN.test(value);
 }
 

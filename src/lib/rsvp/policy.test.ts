@@ -4,7 +4,7 @@ import {
   checkAddGuestAllowance,
   countAddedGuests,
   diffGuestIds,
-  isPartyId,
+  isUuid,
   isRsvpOpen,
   nameSplitCandidates,
   normalizeName,
@@ -66,21 +66,21 @@ describe('isRsvpOpen', () => {
   });
 });
 
-describe('isPartyId', () => {
+describe('isUuid', () => {
   it('accepts a canonical UUID', () => {
-    expect(isPartyId('3f9a1b2c-4d5e-4f60-8a1b-2c3d4e5f6071')).toBe(true);
+    expect(isUuid('3f9a1b2c-4d5e-4f60-8a1b-2c3d4e5f6071')).toBe(true);
   });
 
   it('is case-insensitive', () => {
-    expect(isPartyId('3F9A1B2C-4D5E-4F60-8A1B-2C3D4E5F6071')).toBe(true);
+    expect(isUuid('3F9A1B2C-4D5E-4F60-8A1B-2C3D4E5F6071')).toBe(true);
   });
 
   it('rejects a non-UUID', () => {
-    expect(isPartyId('not-a-uuid')).toBe(false);
+    expect(isUuid('not-a-uuid')).toBe(false);
   });
 
   it('rejects a UUID with surrounding whitespace', () => {
-    expect(isPartyId(' 3f9a1b2c-4d5e-4f60-8a1b-2c3d4e5f6071 ')).toBe(false);
+    expect(isUuid(' 3f9a1b2c-4d5e-4f60-8a1b-2c3d4e5f6071 ')).toBe(false);
   });
 });
 

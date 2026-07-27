@@ -1,0 +1,25 @@
+BEGIN TRY
+
+BEGIN TRAN;
+
+-- AlterTable
+ALTER TABLE [dbo].[AuditEntry] ALTER COLUMN [partyId] UNIQUEIDENTIFIER NULL;
+
+-- AlterTable
+ALTER TABLE [dbo].[Guest] ADD [deletedAt] DATETIME2;
+
+-- AlterTable
+ALTER TABLE [dbo].[Party] ADD [deletedAt] DATETIME2;
+
+COMMIT TRAN;
+
+END TRY
+BEGIN CATCH
+
+IF @@TRANCOUNT > 0
+BEGIN
+    ROLLBACK TRAN;
+END;
+THROW
+
+END CATCH
