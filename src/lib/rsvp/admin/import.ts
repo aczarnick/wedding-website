@@ -13,7 +13,19 @@ export interface ImportSummary {
   guestsCreated: number;
 }
 
-async function loadDefaultAddGuestCap(client: PrismaClient): Promise<number> {
+/**
+ * Only queries settings when some party actually needs the default — a file
+ * where every row specifies `addGuestCap` must not fail with `settings_missing`
+ * for a value it never uses.
+ */
+async function loadDefaultAddGuestCap(
+  client: PrismaClient,
+  parties: readonly ImportParty[],
+): Promise<number | null> {
+  if (!parties.some((party) => party.addGuestCap === null)) {
+    return null;
+  }
+
   const settings = await client.settings.findUnique({ where: { id: 1 } });
 
   if (!settings) {
@@ -47,10 +59,27 @@ async function findCollisions(
     }));
 }
 
+/**
+ * Resolves null to the loaded default. Throws rather than silently falling
+ * back to a bogus value if the default was never loaded — which would only
+ * happen if the "does any party need it" check above disagreed with this one.
+ */
+function resolveAddGuestCap(addGuestCap: number | null, defaultAddGuestCap: number | null): number {
+  if (addGuestCap !== null) {
+    return addGuestCap;
+  }
+
+  if (defaultAddGuestCap === null) {
+    throw new Error('addGuestCap default was not loaded but a party requires it');
+  }
+
+  return defaultAddGuestCap;
+}
+
 async function createParty(
   tx: Prisma.TransactionClient,
   party: ImportParty,
-  defaultAddGuestCap: number,
+  defaultAddGuestCap: number | null,
   actorEmail: string,
   ipAddress: string | null,
 ): Promise<number> {
@@ -58,7 +87,7 @@ async function createParty(
     data: {
       displayName: party.displayName,
       message: party.message,
-      addGuestCap: party.addGuestCap ?? defaultAddGuestCap,
+      addGuestCap: resolveAddGuestCap(party.addGuestCap, defaultAddGuestCap),
       guests: {
         create: party.guests.map((guest) => ({
           firstName: guest.firstName,
@@ -109,7 +138,7 @@ export async function importParties(
     throw invalidCsv(parsed.rowErrors);
   }
 
-  const defaultAddGuestCap = await loadDefaultAddGuestCap(client);
+  const defaultAddGuestCap = await loadDefaultAddGuestCap(client, parsed.parties);
   const collisions = await findCollisions(client, parsed.parties);
 
   if (collisions.length > 0) {

@@ -67,6 +67,16 @@ describe('invalidCsv', () => {
     );
   });
 
+  it('counts distinct invalid lines, not the number of errors, when one row fails twice', () => {
+    const error = invalidCsv([
+      { line: 4, reason: 'firstName is required' },
+      { line: 4, reason: 'lastName is required' },
+    ]);
+
+    expect(error.message).toBe('Import rejected: 1 invalid row');
+    expect(error.details.rowErrors).toHaveLength(2);
+  });
+
   it('carries every row error and zeroed counters', () => {
     const error = invalidCsv([
       { line: 2, reason: 'a' },

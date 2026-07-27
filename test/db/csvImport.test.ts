@@ -135,6 +135,30 @@ describe.skipIf(!databaseUrl)('importParties', () => {
     expect(party.addGuestCap).toBe(settings.defaultAddGuestCap);
   });
 
+  it('succeeds without settings when every row specifies addGuestCap', async () => {
+    await prisma.settings.deleteMany();
+
+    const summary = await importText(
+      `${HEADER}\nThe Brown Family,Ada,Brown,,3\n`,
+    );
+
+    expect(summary).toEqual({ partiesCreated: 1, guestsCreated: 1 });
+
+    const party = await prisma.party.findFirstOrThrow({
+      where: { displayName: 'The Brown Family' },
+    });
+    expect(party.addGuestCap).toBe(3);
+  });
+
+  it('still fails loudly when a blank addGuestCap needs a missing settings row', async () => {
+    await prisma.settings.deleteMany();
+
+    const error = await expectRsvpError(`${HEADER}\nThe Brown Family,Ada,Brown,,\n`);
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe('settings_missing');
+  });
+
   it('writes one import audit entry per party with the actor email', async () => {
     await importText(`${HEADER}\nThe Brown Family,Ada,Brown,,\n`);
 
