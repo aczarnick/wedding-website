@@ -2328,6 +2328,24 @@ Expected: FAIL — cannot resolve `./RsvpWizard`.
 
 - [ ] **Step 3: Implement `RsvpWizard`**
 
+> **Correction (applied in commit `3da2781`).** The code block below was found
+> defective in review and does not match what shipped. It contradicts this
+> plan's own error-handling table in two places, and the table governs:
+>
+> 1. `handleSubmit` lets a `404 party_not_found` fall through to the generic
+>    branch, stranding the guest in an editor for a party that no longer
+>    exists. All three handlers must share one error mapper so `rsvp_closed`
+>    and `party_not_found` map identically by construction.
+> 2. `reloadAfterConflict` reports *every* non-403 refetch failure as
+>    `PARTY_MISSING_MESSAGE` and discards the draft. Only `party_not_found`
+>    may do that; any other failure must stay in `editing` with the original
+>    `party` and an **unchanged** `formKey`, which is what preserves the draft.
+>
+> The shipped version also adds a `default:` exhaustiveness guard on the state
+> switch (React 19's `FunctionComponent` may return `undefined`, so falling off
+> the end is not a compile error) and a `useRef` request-generation guard in
+> `openParty` against double-clicks in the picker.
+
 Create `src/components/rsvp/RsvpWizard.tsx`:
 
 ```tsx
