@@ -10,14 +10,14 @@ import type {
 import { AUDIT_ACTION, GUEST_SOURCE } from '@/lib/enums';
 import { RsvpError } from '@/lib/rsvp/errors';
 import { GUEST_ORDER } from '@/lib/rsvp/parties';
-import { isPartyId } from '@/lib/rsvp/policy';
+import { isUuid } from '@/lib/rsvp/policy';
 
 function guestNotFound(): RsvpError {
   return new RsvpError(404, 'guest_not_found', 'Guest not found');
 }
 
 async function loadGuest(tx: Prisma.TransactionClient, guestId: string) {
-  if (!isPartyId(guestId)) {
+  if (!isUuid(guestId)) {
     throw guestNotFound();
   }
 
@@ -56,7 +56,7 @@ export async function createGuest(
   input: CreateGuestInput,
 ): Promise<AdminGuest> {
   return client.$transaction(async (tx) => {
-    if (!isPartyId(input.partyId)) {
+    if (!isUuid(input.partyId)) {
       throw new RsvpError(404, 'party_not_found', 'Party not found');
     }
 

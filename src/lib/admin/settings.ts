@@ -2,7 +2,7 @@ import type { PrismaClient } from '@/generated/prisma/client';
 import { writeAuditEntry, type AuditContext } from '@/lib/admin/audit-log';
 import type { UpdateSettingsInput } from '@/lib/admin/schemas';
 import { AUDIT_ACTION } from '@/lib/enums';
-import { RsvpError } from '@/lib/rsvp/errors';
+import { requireSettings } from '@/lib/rsvp/parties';
 
 export interface AdminSettings {
   rsvpDeadline: string;
@@ -21,18 +21,8 @@ function toAdminSettings(row: SettingsRow): AdminSettings {
   };
 }
 
-function settingsMissing(): RsvpError {
-  return new RsvpError(500, 'settings_missing', 'RSVP settings are not configured');
-}
-
 export async function getSettings(client: PrismaClient): Promise<AdminSettings> {
-  const settings = await client.settings.findUnique({ where: { id: 1 } });
-
-  if (!settings) {
-    throw settingsMissing();
-  }
-
-  return toAdminSettings(settings);
+  return toAdminSettings(await requireSettings(client));
 }
 
 export async function updateSettings(
@@ -41,12 +31,7 @@ export async function updateSettings(
   input: UpdateSettingsInput,
 ): Promise<AdminSettings> {
   return client.$transaction(async (tx) => {
-    const existing = await tx.settings.findUnique({ where: { id: 1 } });
-
-    if (!existing) {
-      throw settingsMissing();
-    }
-
+    const existing = await requireSettings(tx);
     const updated = await tx.settings.update({ where: { id: 1 }, data: input });
 
     await writeAuditEntry(tx, audit, {

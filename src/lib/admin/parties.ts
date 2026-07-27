@@ -4,8 +4,8 @@ import { toAdminParty, toPartyFields, type AdminParty } from '@/lib/admin/projec
 import type { CreatePartyInput, UpdatePartyInput } from '@/lib/admin/schemas';
 import { AUDIT_ACTION, GUEST_SOURCE } from '@/lib/enums';
 import { RsvpError } from '@/lib/rsvp/errors';
-import { GUEST_ORDER } from '@/lib/rsvp/parties';
-import { isPartyId } from '@/lib/rsvp/policy';
+import { GUEST_ORDER, requireSettings } from '@/lib/rsvp/parties';
+import { isUuid } from '@/lib/rsvp/policy';
 
 const ACTIVE_GUESTS = { where: { deletedAt: null }, orderBy: GUEST_ORDER } as const;
 
@@ -14,7 +14,7 @@ function partyNotFound(): RsvpError {
 }
 
 async function loadParty(tx: Prisma.TransactionClient, partyId: string) {
-  if (!isPartyId(partyId)) {
+  if (!isUuid(partyId)) {
     throw partyNotFound();
   }
 
@@ -52,11 +52,7 @@ export async function createParty(
   input: CreatePartyInput,
 ): Promise<AdminParty> {
   return client.$transaction(async (tx) => {
-    const settings = await tx.settings.findUnique({ where: { id: 1 } });
-
-    if (!settings) {
-      throw new RsvpError(500, 'settings_missing', 'RSVP settings are not configured');
-    }
+    const settings = await requireSettings(tx);
 
     const created = await tx.party.create({
       data: {
@@ -116,8 +112,8 @@ export async function updateParty(
 
 /**
  * Marks a party and its guests deleted. A hard delete is impossible while the
- * party has change-log history: `AuditEntry.partyId` is non-nullable with no
- * cascade, so the delete would raise a foreign-key violation.
+ * party has change-log history: that foreign key is `onDelete: NoAction`, so
+ * the delete would raise a foreign-key violation.
  */
 export async function softDeleteParty(
   client: PrismaClient,

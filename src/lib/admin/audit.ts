@@ -14,11 +14,9 @@ export interface AuditEntryView {
   createdAt: string;
 }
 
-/**
- * Snapshots are stored as JSON text by writeAuditEntry. A parse failure
- * indicates stored data corruption. The raw text is surfaced and the failure
- * logged so one bad row cannot hide the rest of the change log.
- */
+// Snapshots are stored as JSON text by writeAuditEntry. A parse failure
+// indicates stored data corruption. The raw text is surfaced and the failure
+// logged so one bad row cannot hide the rest of the change log.
 function parseSnapshot(value: string | null, entryId: string, field: 'before' | 'after'): unknown {
   if (value === null) {
     return null;
