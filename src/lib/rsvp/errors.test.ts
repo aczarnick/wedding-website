@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { RsvpError, errorResponse, invalidRequest } from '@/lib/rsvp/errors';
+import { RsvpError, csvTooLarge, errorResponse, invalidCsv, invalidRequest } from '@/lib/rsvp/errors';
 
 describe('errorResponse', () => {
   it('renders an RsvpError as its status and code', async () => {
@@ -57,5 +57,35 @@ describe('invalidRequest', () => {
 
     expect(error.message).toBe('Enter a first and last name');
     expect(error.details).toEqual({});
+  });
+});
+
+describe('invalidCsv', () => {
+  it('singularizes a single row error', () => {
+    expect(invalidCsv([{ line: 2, reason: 'firstName is required' }]).message).toBe(
+      'Import rejected: 1 invalid row',
+    );
+  });
+
+  it('carries every row error and zeroed counters', () => {
+    const error = invalidCsv([
+      { line: 2, reason: 'a' },
+      { line: 3, reason: 'b' },
+    ]);
+
+    expect(error.status).toBe(400);
+    expect(error.code).toBe('invalid_csv');
+    expect(error.details).toMatchObject({ partiesCreated: 0, guestsCreated: 0 });
+    expect(error.details.rowErrors).toHaveLength(2);
+  });
+});
+
+describe('csvTooLarge', () => {
+  it('is a 413 carrying zeroed counters', () => {
+    const error = csvTooLarge('too big');
+
+    expect(error.status).toBe(413);
+    expect(error.code).toBe('csv_too_large');
+    expect(error.details).toMatchObject({ partiesCreated: 0, guestsCreated: 0 });
   });
 });

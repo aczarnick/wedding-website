@@ -1,7 +1,10 @@
 import { z, type ZodError } from 'zod';
+import type { RowError } from '@/lib/rsvp/csvSchemas';
 
 export type RsvpErrorCode =
   | 'invalid_request'
+  | 'invalid_csv'
+  | 'csv_too_large'
   | 'rsvp_closed'
   | 'party_not_found'
   | 'party_changed'
@@ -51,4 +54,25 @@ export function invalidRequest(error: ZodError): RsvpError {
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
   return new RsvpError(400, 'invalid_request', message, hasFieldErrors ? { fieldErrors } : {});
+}
+
+/**
+ * Rejects an import, reporting every bad row. The zero counters are always
+ * present so a client reads the same two fields on success and on failure.
+ */
+export function invalidCsv(rowErrors: RowError[]): RsvpError {
+  const noun = rowErrors.length === 1 ? 'row' : 'rows';
+
+  return new RsvpError(400, 'invalid_csv', `Import rejected: ${rowErrors.length} invalid ${noun}`, {
+    rowErrors,
+    partiesCreated: 0,
+    guestsCreated: 0,
+  });
+}
+
+export function csvTooLarge(message: string): RsvpError {
+  return new RsvpError(413, 'csv_too_large', message, {
+    partiesCreated: 0,
+    guestsCreated: 0,
+  });
 }
