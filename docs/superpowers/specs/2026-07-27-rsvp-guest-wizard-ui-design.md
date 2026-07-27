@@ -35,19 +35,28 @@ anticipated it would.
 
 `GET /search`, `GET /:id`, and `PATCH /:id/rsvp` all return `403 rsvp_closed`
 once `Settings.rsvpDeadline` has passed. A read-only view would require reading,
-so it is not available. After the deadline `/rsvp` renders a terminal closed
-page: the deadline date and a line directing the guest to the bride or groom.
-No lookup form, no read-back.
+so it is not available. Once closed, the wizard shows a terminal closed page —
+the deadline date and a line directing the guest to the bride or groom — with no
+read-back of a submitted RSVP.
 
 This was confirmed as a product decision rather than worked around by relaxing
 the API, which would have meant reopening shipped #64 code and its tests.
+
+**The closed state is discovered, not preloaded.** `page.tsx` stays a static
+server shell that reads no data, so a post-deadline visitor sees the lookup form
+first and reaches the closed page from the search call's 403. Reading
+`Settings.rsvpDeadline` during render would make the route `force-dynamic`, add a
+database round trip to every visit, and put a DB-dependent page in the path of a
+`next build` that has no `DATABASE_URL`. One wasted interaction on a path that
+only matters after the RSVP window shuts is the cheaper trade.
 
 ## Architecture
 
 ```
 src/app/rsvp/page.tsx                     server component: <Header/> + <RsvpWizard/>
-src/lib/rsvp/types.ts                     Prisma-free response interfaces (new)
+src/lib/rsvp/types.ts                     Prisma-free response + draft interfaces (new)
 src/lib/rsvp/client.ts                    typed fetch wrappers + RsvpApiError (new)
+src/lib/rsvp/draft.ts                     pure draft→payload rules (new)
 src/components/rsvp/
   RsvpWizard.tsx                          'use client' state machine; owns all API calls
   PartyLookup.tsx                         search form, inline validation, not-found state
@@ -165,14 +174,32 @@ does **not** attempt to merge the old draft onto the new guest set — a merge
 would have to guess whether an admin's edit or the guest's stale answer wins,
 and getting that wrong silently corrupts an RSVP.
 
+## Draft rules as pure functions
+
+`src/lib/rsvp/draft.ts` holds the rules that turn the form's draft state into a
+submit payload, with no React and no `fetch`: seeding drafts from a
+`PartyDetail`, narrowing a stored `rsvpStatus` string to a submittable status,
+resolving a song request to `string | null`, and building the request body.
+
+`buildSubmitBody()` returns `SubmitRsvpBody | null` — `null` exactly when the
+draft is incomplete. That makes one function the single source of truth for both
+"is Submit enabled" and "what gets sent", so the two can never disagree, and it
+removes the unreachable-branch problem of validating completeness in one place
+and re-deriving the payload in another.
+
+This mirrors the `policy.ts` split #64 established: the acceptance criteria live
+in pure functions whose tests run in CI.
+
 ## Form rules
 
 - **Submit gating** — every existing guest and every draft new guest must be
   `attending` or `declined`. `pending` is not submittable (#64), so the button
   stays disabled with "Please answer for everyone" until the set is complete.
   New guests additionally need a first and last name.
-- **Song request** — hidden when a guest is Declined, and submitted as `null`.
-  A declined guest's song request is not data anyone wants.
+- **Song request** — visible only while a guest is set to Attending, so it is
+  hidden both when Declined and before the guest has answered. A song typed and
+  then switched to Declined submits as `null`; a declined guest's song request
+  is not data anyone wants.
 - **Add a guest** — the control shows `addedGuestsRemaining` and disappears at
   zero. Draft new guests count against the remaining total client-side, so the
   control disappears as the guest fills the cap rather than only on a rejected
@@ -194,8 +221,19 @@ colors, no custom CSS, no new fonts.
 
 ## Testing
 
-**RTL, in the existing `unit` project**, colocated with each component per the
-`Header.test.tsx` convention, mocking `@/lib/rsvp/client` with `vi.mock`:
+Everything runs in the existing `unit` Vitest project. No new test dependency:
+`@testing-library/user-event` is not installed, so interaction tests use
+`fireEvent` from `@testing-library/react`. Adding a dependency would force the
+regenerate-the-lockfile-inside-the-Linux-image dance (`LEARNINGS.md`,
+2026-07-25) for no benefit here.
+
+**Pure unit tests** (`src/lib/rsvp/draft.test.ts`, `src/lib/rsvp/client.test.ts`):
+draft seeding from a `PartyDetail`, status narrowing, song resolution, every
+`buildSubmitBody` completeness case, and the client's URL/method/error mapping
+including `network_error`.
+
+**RTL component tests**, colocated per the `Header.test.tsx` convention, mocking
+`@/lib/rsvp/client` with `vi.mock`:
 
 - lookup rejects a single-token query and renders the API's field error
 - zero matches renders the not-found state naming the bride and groom
