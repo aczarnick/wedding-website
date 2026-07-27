@@ -36,6 +36,18 @@ Cross-cutting traps that cost a run real time but belong to no single phase.
   is such a file. Three empty greps made an intact plan look truncated. The moment
   a grep result disagrees with a `wc -l` that says the content is there, reach for
   `grep -a`.
+- **`getByRole('alert')` matches the Next dev overlay, so an assertion on it can
+  pass vacuously.** Waiting on `getByRole('alert')` after a bad-password submit
+  resolved instantly against a dev-indicator element with empty text — while the
+  real submit was still in flight — and the step "passed" with `alert text: ""`.
+  Only opening the screenshot (button still reading "Signing in…", no error
+  visible) exposed it. Scope runtime assertions to the app's own DOM
+  (`form p[role="alert"]`) and treat empty matched text as a failure, not a pass.
+  Note scrypt verification takes ~1s, so a naive wait races it.
+- **A one-off Playwright script must live inside the worktree.** Node resolves
+  `playwright-core` from the *script's* directory, not the cwd, so a driver
+  written to the scratchpad dies with `ERR_MODULE_NOT_FOUND` however you invoke
+  it. Write it to the worktree root as `tmp-*.mjs` and delete it before committing.
 - **A verification that mutates shared state must restore it.** Proving a deadline
   lock meant moving `Settings.rsvpDeadline` into the past; leaving it there would
   have silently 403'd every later check. Re-seed afterwards, restore any `.env` you
@@ -46,6 +58,46 @@ Cross-cutting traps that cost a run real time but belong to no single phase.
 
 Append a dated bullet when a run hits friction the skill didn't anticipate. Once a
 lesson is folded into `SKILL.md` (or captured above), prune it.
+
+### 2026-07-27 — issue #71 (wire RSVP button)
+
+- **An issue's premise can be false — verify the thing it says to modify exists
+  before planning.** #71 read "point the site's *existing* RSVP call-to-action at
+  /rsvp"; there was no such button anywhere in `src/`. A grep during Phase 1 turned
+  a "repoint one link" task into a design question (where does the CTA go?) that
+  had to reach the user at the plan checkpoint. Cheap to check, expensive to
+  discover mid-implementation.
+- **`/code-review` assumes an open PR; ship-it invokes it before pushing.** Its
+  procedure fetches a PR with `gh`, scores findings, and comments back — none of
+  which applies to an unpushed working diff. Phase 7 should say: review the diff
+  directly (inline for a small diff), and reserve the skill's PR flow for a review
+  of an already-open PR.
+- **The Bash tool's working directory persists across calls**, including a `cd`
+  inside a compound command. A dev server started "in the repo root" was actually
+  the worktree's — right answer by luck. Confirm with `pwd` (or `lsof -ti:3000`)
+  before trusting which tree a long-running server is serving.
+- **Verify a nav addition at the breakpoint where it first appears, not just at
+  desktop and mobile widths.** A 7th header link is exactly the change that wraps
+  at `md` (768px) while looking fine at 1280 and 390.
+- **UI PRs need screenshots, and the `docs/screenshots/` + raw-URL convention is
+  now mandatory in Phase 8** — promoted there along with the issue #68 entry that
+  predicted this exact repeat. Cost this run: the PR shipped with no visuals, and
+  the recovery first chased two dead ends (the Claude Chrome extension is not
+  connected, so web-UI upload is unavailable; an orphan `screenshots` branch was
+  denied by the permission classifier) before finding that `master` already carried
+  `docs/screenshots/rsvp/` from PR #90. **Read the repo for an existing convention
+  before designing a new one** — `git ls-tree -r origin/master | grep screenshots`
+  would have answered it in one command.
+- **The working-directory drift above bit twice in one run**, the second time
+  writing `docs/screenshots/` into the main repo's `master` tree instead of the
+  branch worktree. Harmless because it was untracked, but a `git add -A` would have
+  committed screenshots to the wrong branch. `pwd` before any path-relative write.
+
+### 2026-07-27 — issue #68 (admin dashboard shell)
+
+Both findings recurred on issue #71 and are now folded into `SKILL.md` — the
+`docs/screenshots/` + full-sha raw-URL convention (Phase 8) and the `/code-review`
+skill assuming an already-open PR (Phase 7). No pending items.
 
 ### 2026-07-27 — issue #67 (guest RSVP wizard UI)
 
