@@ -1648,8 +1648,6 @@ interface PartyFormProps {
   onSubmit: (body: SubmitRsvpBody) => void;
 }
 
-const UNANSWERED_DRAFT: GuestDraft = { rsvpStatus: null, songRequest: '' };
-
 export const PartyForm: React.FC<PartyFormProps> = ({
   party,
   notice,
@@ -1711,7 +1709,7 @@ export const PartyForm: React.FC<PartyFormProps> = ({
           <GuestRsvpFields
             key={guest.id}
             guest={guest}
-            draft={guestDrafts[guest.id] ?? UNANSWERED_DRAFT}
+            draft={guestDrafts[guest.id]}
             onChange={(draft) => updateGuestDraft(guest.id, draft)}
           />
         ))}
