@@ -44,7 +44,11 @@ describe.skipIf(!databaseUrl)('CSV round trip', () => {
       addGuestCap: 3,
       rsvpStatus: RSVP_STATUS.pending,
     });
-    expect(records.some((record) => record.firstName === 'Cleo')).toBe(true);
+    expect(records.find((record) => record.firstName === 'Cleo')).toMatchObject({
+      lastName: 'Nguyễn',
+      partyDisplayName: 'Cleo Nguyễn',
+      addGuestCap: 1,
+    });
   });
 
   it('produces an export that the import parser can read back', async () => {
@@ -54,6 +58,11 @@ describe.skipIf(!databaseUrl)('CSV round trip', () => {
     const reparsed = parseImportCsv(csv);
 
     expect(reparsed.ok).toBe(true);
+    if (!reparsed.ok) return;
+
+    expect(reparsed.parties.find((party) => party.displayName === 'Cleo Nguyễn')).toMatchObject({
+      guests: [{ firstName: 'Cleo', lastName: 'Nguyễn' }],
+    });
   });
 
   it('reflects a submitted RSVP in the export', async () => {
