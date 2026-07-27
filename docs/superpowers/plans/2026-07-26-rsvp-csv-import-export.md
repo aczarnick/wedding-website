@@ -1635,7 +1635,13 @@ describe.skipIf(!databaseUrl)('CSV round trip', () => {
       addGuestCap: 3,
       rsvpStatus: RSVP_STATUS.pending,
     });
-    expect(records.some((record) => record.firstName === 'Cleo')).toBe(true);
+    // Pin the diacritic explicitly — a `some(firstName === 'Cleo')` check would
+    // not catch a corrupted or dropped surname, which is why this row exists.
+    expect(records.find((record) => record.firstName === 'Cleo')).toMatchObject({
+      lastName: 'Nguyễn',
+      partyDisplayName: 'Cleo Nguyễn',
+      addGuestCap: 1,
+    });
   });
 
   it('produces an export that the import parser can read back', async () => {
