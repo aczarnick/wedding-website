@@ -1,12 +1,11 @@
 import { parse } from 'csv-parse/sync';
-import type { Info } from 'csv-parse';
+import { CsvError, type Info } from 'csv-parse';
 import {
   REQUIRED_IMPORT_COLUMNS,
   importRowSchema,
   type ImportRow,
   type RowError,
 } from '@/lib/rsvp/csvSchemas';
-import { normalizeName } from '@/lib/rsvp/policy';
 
 export interface ImportGuest {
   firstName: string;
@@ -35,6 +34,20 @@ const HEADER_LINE = 1;
 
 function failure(recordCount: number, rowErrors: RowError[]): ImportParseResult {
   return { ok: false, recordCount, rowErrors };
+}
+
+/**
+ * csv-parse throws mid-stream on a malformed row, but the error still carries
+ * how many records it had already parsed. Task 5 checks `recordCount` against
+ * the row limit before it inspects `ok`, so that count must survive the throw
+ * rather than being zeroed out.
+ */
+function recordCountFrom(error: unknown): number {
+  if (error instanceof CsvError && typeof error.records === 'number') {
+    return error.records;
+  }
+
+  return 0;
 }
 
 /**
@@ -161,7 +174,7 @@ export function parseImportCsv(text: string): ImportParseResult {
   try {
     ({ header, records } = readRecords(text));
   } catch (error) {
-    return failure(0, [
+    return failure(recordCountFrom(error), [
       { line: HEADER_LINE, reason: error instanceof Error ? error.message : 'Could not read the file' },
     ]);
   }
@@ -193,7 +206,7 @@ export function parseImportCsv(text: string): ImportParseResult {
     }
 
     const row = parsed.data;
-    const key = normalizeName(row.partyDisplayName).toLowerCase();
+    const key = row.partyDisplayName.toLowerCase();
     let accumulator = accumulators.get(key);
 
     if (!accumulator) {

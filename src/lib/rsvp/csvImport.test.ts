@@ -135,6 +135,15 @@ describe('parseImportCsv', () => {
     expect(errors[0].reason).toMatch(/column/i);
   });
 
+  it('reports the real recordCount from a mid-file ragged row, not zero', () => {
+    const result = parseImportCsv(
+      `${HEADER}\nSmiths,John,Smith,,\nJoneses,Jane,Jones,,\nRiveras,Alex,Rivera,,\nBroken,Bob,Smith,,5,extra\n`,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.recordCount).toBe(3);
+  });
+
   it('reports recordCount even when the file is invalid', () => {
     const result = parseImportCsv(`${HEADER}\nSmiths,,Smith,,\nSmiths,Jane,Smith,,\n`);
 
