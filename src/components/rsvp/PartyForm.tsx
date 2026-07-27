@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AddedGuestFields } from './AddedGuestFields';
 import { GuestRsvpFields } from './GuestRsvpFields';
+import { StepHeading } from './StepHeading';
 import { buildSubmitBody, emptyNewGuestDraft, initialGuestDrafts } from '@/lib/rsvp/draft';
 import type { GuestDraft, NewGuestDraft, PartyDetail, SubmitRsvpBody } from '@/lib/rsvp/types';
 
@@ -55,11 +56,8 @@ export const PartyForm: React.FC<PartyFormProps> = ({
   };
 
   return (
-    <form className='w-full max-w-lg' onSubmit={handleSubmit}>
-      <h1 className='text-center text-3xl text-sage-800'>{party.displayName}</h1>
-      <p className='mt-3 text-center text-xs uppercase tracking-[0.4em] text-sage-700/70'>
-        Your RSVP
-      </p>
+    <form className='w-full' onSubmit={handleSubmit}>
+      <StepHeading title={party.displayName} eyebrow='Your RSVP' />
 
       {notice && (
         <p

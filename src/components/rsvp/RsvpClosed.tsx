@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { StepHeading } from './StepHeading';
 
 interface RsvpClosedProps {
   deadline: string | null;
@@ -31,8 +32,8 @@ export const RsvpClosed: React.FC<RsvpClosedProps> = ({ deadline }) => {
   const closedOn = formatDeadline(deadline);
 
   return (
-    <section className='w-full max-w-md text-center'>
-      <h1 className='text-3xl text-sage-800'>RSVPs are closed</h1>
+    <section className='w-full text-center'>
+      <StepHeading title='RSVPs are closed' eyebrow='Guest list closed' />
 
       <p className='mt-6 text-sage-700'>
         {closedOn

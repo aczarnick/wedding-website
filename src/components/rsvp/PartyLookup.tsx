@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { StepHeading } from './StepHeading';
 
 interface PartyLookupProps {
   isSearching: boolean;
@@ -23,11 +24,8 @@ export const PartyLookup: React.FC<PartyLookupProps> = ({
   };
 
   return (
-    <section className='w-full max-w-md'>
-      <h1 className='text-center text-3xl text-sage-800'>RSVP</h1>
-      <p className='mt-3 text-center text-xs uppercase tracking-[0.4em] text-sage-700/70'>
-        Find your invitation
-      </p>
+    <section className='w-full'>
+      <StepHeading title='RSVP' eyebrow='Find your invitation' />
 
       <form className='mt-8' onSubmit={handleSubmit}>
         <label className='text-sm text-sage-700' htmlFor='party-search'>

@@ -1,3 +1,4 @@
+import { StepHeading } from './StepHeading';
 import type { PartySearchResult } from '@/lib/rsvp/types';
 
 interface PartyPickerProps {
@@ -7,10 +8,10 @@ interface PartyPickerProps {
 }
 
 export const PartyPicker: React.FC<PartyPickerProps> = ({ matches, onSelect, onStartOver }) => (
-  <section className='w-full max-w-md'>
-    <h1 className='text-center text-3xl text-sage-800'>Which one is you?</h1>
-    <p className='mt-3 text-center text-sm text-sage-700'>
-      We found more than one match. Pick the group you belong to.
+  <section className='w-full'>
+    <StepHeading title='Which group is yours?' eyebrow='More than one match' />
+    <p className='mt-5 text-center text-sm text-sage-700'>
+      Your name is on more than one invitation. Pick the group you belong to.
     </p>
 
     <ul className='mt-8 space-y-3'>

@@ -25,7 +25,7 @@ export const RsvpStatusToggle: React.FC<RsvpStatusToggleProps> = ({
       {OPTIONS.map(({ status, label }) => (
         <label
           key={status}
-          className={`flex-1 cursor-pointer rounded-full border px-4 py-2 text-center text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage-700 ${
+          className={`flex-1 cursor-pointer rounded-full border px-4 py-2 text-center text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage-700 has-[:focus-visible]:ring-offset-2 ${
             value === status
               ? 'border-sage-700 bg-sage-700 text-white'
               : 'border-sage-200 bg-white text-sage-700 hover:border-sage-700'

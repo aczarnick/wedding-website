@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { StepHeading } from './StepHeading';
 import { GUEST_SOURCE, RSVP_STATUS } from '@/lib/enums';
 import type { PartyDetail, PartyDetailGuest } from '@/lib/rsvp/types';
 
@@ -42,9 +43,9 @@ export const RsvpConfirmation: React.FC<RsvpConfirmationProps> = ({ party, onEdi
   const hasAddedGuests = party.guests.some((guest) => guest.source === GUEST_SOURCE.guestAdded);
 
   return (
-    <section className='w-full max-w-md'>
-      <h1 className='text-center text-3xl text-sage-800'>Thank you!</h1>
-      <p className='mt-3 text-center text-sm text-sage-700'>
+    <section className='w-full'>
+      <StepHeading title='Thank you!' eyebrow='RSVP received' />
+      <p className='mt-5 text-center text-sm text-sage-700'>
         We have your RSVP for <span className='text-sage-800'>{party.displayName}</span>. You can
         come back and change it any time before the deadline.
       </p>
