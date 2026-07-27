@@ -16,11 +16,68 @@ Persistent facts about the current dev machine — not todos; Phase 0 reads thes
   wedding DB uses host `14330` (`docker-compose.dev.yml`); don't disturb the other.
 - **SQL Server image:** 2025 crashes under Podman/Rosetta with an AVX assertion —
   use `2022-latest`. Deeper context: personal memory `rsvp-data-layer-stack`.
+- **Never put `$` in a value destined for `.env`.** Next's env loader expands it —
+  a `$`-separated scrypt hash had `$16384` read as `$1` + `6384`, breaking every
+  sign-in. The same trap waits in shell, Terraform, and Container App secrets.
+  Colons are safe and base64-compatible. Personal memory: `env-var-dollar-expansion`.
+- **Pre-existing `tsc` noise:** `npx tsc --noEmit` reports ~21 errors in
+  `src/proxy.test.ts` plus a few image-import files on a clean `master`, so its
+  exit code is already non-zero. Check errors *by file* before blaming your diff.
+
+## Tooling gotchas
+
+Cross-cutting traps that cost a run real time but belong to no single phase.
+
+- **`npx tsx -e` emits CJS and rejects top-level `await`.** Write the throwaway
+  script to a real `.ts` file with an `async main()`, run it, then delete it.
+- **A file containing a literal U+FEFF makes `grep` print _nothing_** — not "0
+  matches", not "Binary file matches", just silence, because the file is
+  classified as binary. A plan whose test code embeds a BOM (`const BOM = '﻿'`)
+  is such a file. Three empty greps made an intact plan look truncated. The moment
+  a grep result disagrees with a `wc -l` that says the content is there, reach for
+  `grep -a`.
+- **A verification that mutates shared state must restore it.** Proving a deadline
+  lock meant moving `Settings.rsvpDeadline` into the past; leaving it there would
+  have silently 403'd every later check. Re-seed afterwards, restore any `.env` you
+  edited, and prefer passing a `now` parameter over mutating shared state where the
+  code allows it.
 
 ## Run log
 
 Append a dated bullet when a run hits friction the skill didn't anticipate. Once a
-lesson is folded into `SKILL.md` (or captured as a machine quirk above), prune it.
+lesson is folded into `SKILL.md` (or captured above), prune it.
+
+### 2026-07-27 — issue #66 (CSV import/export)
+
+All findings folded into `SKILL.md` — confirming a dependency is merged rather
+than inferring it (Phase 1), `origin/master` as the base (Phase 2), plan snippets
+owing a review (Phase 4), `task-brief` corruption and lockfile-in-Linux-image
+(Phase 5), exit codes lost through pipes and `build` as the only typechecker
+(Phase 6), asking the review which test injects the failure mid-operation
+(Phase 7) — or captured as tooling gotchas above. No pending items.
+
+### 2026-07-27 — issue #65 (admin API)
+
+All findings folded into `SKILL.md` — stale local `master` (Phase 2), missing
+`.env` in a fresh worktree (Phase 0), plan code blocks carrying defects into
+faithful transcription (Phase 4), proving a restriction in **both** directions
+(Phase 6), and re-running the container build when fixes land after it (Phase 7).
+No pending items.
+
+### 2026-07-26 — issue #64 (guest API)
+
+- **Vitest parallelizes test *files*, so two DB test files sharing one database
+  race.** Fixed with `test.projects` + `fileParallelism: false` on the DB project
+  only; unit tests stay parallel. Now documented in `AGENTS.md` — any future DB
+  test belongs under `test/db/` or it will race. Retained here as the origin of
+  that constraint; everything else from this run is folded into `SKILL.md`.
+
+### 2026-07-25 — issue #63 (admin auth)
+
+All findings folded into `SKILL.md` (Phase 5 lockfile-in-Linux-image and verifying
+subagent claims, Phase 6 runtime proof of a restriction and exit codes through
+pipes, Phase 4 plan prose governing plan snippets) or captured as machine quirks
+above. No pending items.
 
 ### 2026-07-18 — issue #62 (RSVP data layer)
 
