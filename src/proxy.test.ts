@@ -65,7 +65,7 @@ describe('proxy', () => {
 
     expect([307, 308]).toContain(response.status);
     const location = new URL(response.headers.get('location') ?? '');
-    expect(location.pathname).toBe('/api/auth/signin');
+    expect(location.pathname).toBe('/signin');
     expect(location.searchParams.get('callbackUrl')).toBe('http://localhost:3000/admin');
   });
 
@@ -88,7 +88,7 @@ describe('proxy', () => {
 
     expect([307, 308]).toContain(response.status);
     const location = new URL(response.headers.get('location') ?? '');
-    expect(location.pathname).toBe('/api/auth/signin');
+    expect(location.pathname).toBe('/signin');
   });
 
   it('returns 403 (not a redirect) for an admin API request when the session email was removed from the allowlist', async () => {

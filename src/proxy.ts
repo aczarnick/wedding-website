@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { isAdminEmail } from '@/lib/auth/allowlist';
 
-const SIGN_IN_PATH = '/api/auth/signin';
+const SIGN_IN_PATH = '/signin';
 const ADMIN_API_PREFIX = '/api/admin';
 
 export const proxy = auth((request) => {

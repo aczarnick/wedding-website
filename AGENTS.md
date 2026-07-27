@@ -50,6 +50,40 @@ Route handlers call `requireAdminSession()` from `src/lib/auth/session.ts`, whic
 
 All auth environment variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`) are read **inside functions, never at module top level** — `src/proxy.ts` imports `src/auth.ts`, so a top-level throw would break `next build` and `docker build`, neither of which has secrets.
 
+### Admin console UI
+
+`/admin` is the console shell: `src/app/admin/layout.tsx` renders the header, nav
+(`ADMIN_NAV_LINKS` in `src/constants/admin.ts`), signed-in email, and a sign-out
+server action; `src/app/admin/page.tsx` renders the summary tiles.
+
+The sign-in page lives at **`/signin`**, deliberately outside the `/admin/*`
+proxy matcher — a page at `/admin/signin` would be gated by `src/proxy.ts` and
+redirect to itself forever. `pages.signIn` in `src/auth.ts` and `SIGN_IN_PATH` in
+`src/proxy.ts` must both point at it.
+
+`proxy.ts` writes the *absolute* request URL into `?callbackUrl=`, which makes
+that parameter attacker-controllable. `resolveAdminCallbackPath()`
+(`src/lib/admin/callbackPath.ts`) is the only thing that may turn it into a
+destination: it returns a path, never an origin, and only when that path
+addresses `/admin`. Never navigate to a raw `callbackUrl`.
+
+The page reads `callbackUrl` server-side and passes it to `SignInForm` as a prop.
+Reading it with `useSearchParams()` in the client component would need a suspense
+boundary and fails `next build` without one. Sign-in failures render one generic
+"Incorrect email or password" — the same text for an unknown address as for a bad
+password, so the form cannot be used to enumerate admins.
+
+The layout re-checks the session itself rather than calling
+`requireAdminSession()`: that helper answers with a JSON `Response` built for
+route handlers, whereas a browser navigating to a page needs a redirect.
+
+Dashboard totals come from `getSummaryStats()` (`src/lib/admin/stats.ts`), one
+`$transaction` so the tiles are a single snapshot. `invited` is the sum of the
+three status counts, never a separate query that could disagree with them, and
+every count filters `deletedAt: null` on the guest *and* its party.
+
+Design: `docs/superpowers/specs/2026-07-27-admin-dashboard-shell-design.md`.
+
 ### RSVP guest API
 
 `/api/parties/*` is the public, unauthenticated guest surface: `GET /search?q=` (exact full-name lookup), `GET /:id`, and `PATCH /:id/rsvp` (transactional submit). It is deliberately **not** matched by `src/proxy.ts` — only `/admin/*` and `/api/admin/*` are gated.
