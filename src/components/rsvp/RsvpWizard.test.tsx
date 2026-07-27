@@ -78,6 +78,7 @@ describe('RsvpWizard', () => {
     fireEvent.click(await screen.findByRole('button', { name: /John Smith & Guest/ }));
 
     await waitFor(() => expect(fetchPartyMock).toHaveBeenCalledWith('p2'));
+    expect(await screen.findByRole('button', { name: /submit rsvp/i })).toBeInTheDocument();
   });
 
   it('shows the not-found state when nothing matches', async () => {
@@ -109,6 +110,44 @@ describe('RsvpWizard', () => {
     render(<RsvpWizard />);
 
     search();
+
+    expect(await screen.findByRole('heading', { name: /rsvps are closed/i })).toBeInTheDocument();
+    expect(screen.getByText(/September 10, 2026/)).toBeInTheDocument();
+  });
+
+  it('goes to the closed page when opening the party reports the deadline has passed', async () => {
+    searchPartiesMock.mockResolvedValue([
+      { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
+    ]);
+    fetchPartyMock.mockRejectedValue(
+      new RsvpApiError(403, 'rsvp_closed', 'RSVPs are closed.', {
+        deadline: '2026-09-10T00:00:00.000Z',
+      }),
+    );
+    render(<RsvpWizard />);
+
+    search();
+
+    expect(await screen.findByRole('heading', { name: /rsvps are closed/i })).toBeInTheDocument();
+    expect(screen.getByText(/September 10, 2026/)).toBeInTheDocument();
+  });
+
+  it('goes to the closed page when submitting reports the deadline has passed', async () => {
+    searchPartiesMock.mockResolvedValue([
+      { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
+    ]);
+    fetchPartyMock.mockResolvedValue(PARTY);
+    submitRsvpMock.mockRejectedValue(
+      new RsvpApiError(403, 'rsvp_closed', 'RSVPs are closed.', {
+        deadline: '2026-09-10T00:00:00.000Z',
+      }),
+    );
+    render(<RsvpWizard />);
+
+    search();
+    await screen.findByRole('button', { name: /submit rsvp/i });
+    answer('John Smith', 'Attending');
+    fireEvent.click(screen.getByRole('button', { name: /submit rsvp/i }));
 
     expect(await screen.findByRole('heading', { name: /rsvps are closed/i })).toBeInTheDocument();
     expect(screen.getByText(/September 10, 2026/)).toBeInTheDocument();
@@ -169,6 +208,28 @@ describe('RsvpWizard', () => {
     expect(screen.getByRole('button', { name: /submit rsvp/i })).toBeDisabled();
   });
 
+  it('keeps the draft when the conflict refetch fails for an unrelated reason', async () => {
+    searchPartiesMock.mockResolvedValue([
+      { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
+    ]);
+    fetchPartyMock
+      .mockResolvedValueOnce(PARTY)
+      .mockRejectedValueOnce(new RsvpApiError(500, 'server_error', 'Something broke over there.'));
+    submitRsvpMock.mockRejectedValue(
+      new RsvpApiError(409, 'party_changed', 'Your party changed.'),
+    );
+    render(<RsvpWizard />);
+
+    search();
+    await screen.findByRole('button', { name: /submit rsvp/i });
+    answer('John Smith', 'Attending');
+    fireEvent.click(screen.getByRole('button', { name: /submit rsvp/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/something broke over there/i);
+    expect(screen.getByRole('radio', { name: 'Attending' })).toBeChecked();
+    expect(screen.getByRole('button', { name: /submit rsvp/i })).not.toBeDisabled();
+  });
+
   it('returns to lookup when the party has disappeared', async () => {
     searchPartiesMock.mockResolvedValue([
       { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
@@ -179,6 +240,25 @@ describe('RsvpWizard', () => {
     render(<RsvpWizard />);
 
     search();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no longer available/i);
+    expect(screen.getByLabelText(/first and last name/i)).toBeInTheDocument();
+  });
+
+  it('returns to lookup when submitting reports the party is gone', async () => {
+    searchPartiesMock.mockResolvedValue([
+      { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
+    ]);
+    fetchPartyMock.mockResolvedValue(PARTY);
+    submitRsvpMock.mockRejectedValue(
+      new RsvpApiError(404, 'party_not_found', 'Party not found'),
+    );
+    render(<RsvpWizard />);
+
+    search();
+    await screen.findByRole('button', { name: /submit rsvp/i });
+    answer('John Smith', 'Attending');
+    fireEvent.click(screen.getByRole('button', { name: /submit rsvp/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/no longer available/i);
     expect(screen.getByLabelText(/first and last name/i)).toBeInTheDocument();

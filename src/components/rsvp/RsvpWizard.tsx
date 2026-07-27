@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { PartyForm } from './PartyForm';
 import { PartyLookup } from './PartyLookup';
 import { PartyPicker } from './PartyPicker';
@@ -46,29 +46,54 @@ const lookupWithError = (message: string): WizardState => ({
   showNotFound: false,
 });
 
+/**
+ * Maps the two error codes that resolve identically from every call site —
+ * `rsvp_closed` and `party_not_found` — and otherwise defers to the
+ * caller-specific `fallback` for everything else.
+ */
+const mapError = (
+  error: RsvpApiError,
+  fallback: (error: RsvpApiError) => WizardState,
+): WizardState => {
+  if (error.code === 'rsvp_closed') {
+    return closedState(error);
+  }
+
+  if (error.code === 'party_not_found') {
+    return lookupWithError(PARTY_MISSING_MESSAGE);
+  }
+
+  return fallback(error);
+};
+
 export const RsvpWizard: React.FC = () => {
   const [state, setState] = useState<WizardState>(LOOKUP_START);
   const [isBusy, setIsBusy] = useState(false);
+  const openPartyRequestId = useRef(0);
 
   const openParty = async (partyId: string) => {
+    const requestId = ++openPartyRequestId.current;
     setIsBusy(true);
 
     try {
       const party = await fetchParty(partyId);
-      setState({ step: 'editing', party, notice: null, errorMessage: null, formKey: 0 });
-    } catch (caught) {
-      const error = asApiError(caught);
 
-      if (error.code === 'rsvp_closed') {
-        setState(closedState(error));
+      if (openPartyRequestId.current !== requestId) {
         return;
       }
 
-      setState(
-        lookupWithError(error.code === 'party_not_found' ? PARTY_MISSING_MESSAGE : error.message),
-      );
+      setState({ step: 'editing', party, notice: null, errorMessage: null, formKey: 0 });
+    } catch (caught) {
+      if (openPartyRequestId.current !== requestId) {
+        return;
+      }
+
+      const error = asApiError(caught);
+      setState(mapError(error, (resolvedError) => lookupWithError(resolvedError.message)));
     } finally {
-      setIsBusy(false);
+      if (openPartyRequestId.current === requestId) {
+        setIsBusy(false);
+      }
     }
   };
 
@@ -91,7 +116,7 @@ export const RsvpWizard: React.FC = () => {
       setState({ step: 'picking', matches });
     } catch (caught) {
       const error = asApiError(caught);
-      setState(error.code === 'rsvp_closed' ? closedState(error) : lookupWithError(error.message));
+      setState(mapError(error, (resolvedError) => lookupWithError(resolvedError.message)));
     } finally {
       setIsBusy(false);
     }
@@ -109,7 +134,15 @@ export const RsvpWizard: React.FC = () => {
       });
     } catch (caught) {
       const error = asApiError(caught);
-      setState(error.code === 'rsvp_closed' ? closedState(error) : lookupWithError(PARTY_MISSING_MESSAGE));
+      setState(
+        mapError(error, (resolvedError) => ({
+          step: 'editing',
+          party,
+          notice: null,
+          errorMessage: resolvedError.message,
+          formKey,
+        })),
+      );
     }
   };
 
@@ -127,17 +160,20 @@ export const RsvpWizard: React.FC = () => {
     } catch (caught) {
       const error = asApiError(caught);
 
-      if (error.code === 'rsvp_closed') {
-        setState(closedState(error));
-        return;
-      }
-
       if (error.code === 'party_changed' || error.code === 'add_guest_cap_exceeded') {
         await reloadAfterConflict(party, formKey, error);
         return;
       }
 
-      setState({ step: 'editing', party, notice: null, errorMessage: error.message, formKey });
+      setState(
+        mapError(error, (resolvedError) => ({
+          step: 'editing',
+          party,
+          notice: null,
+          errorMessage: resolvedError.message,
+          formKey,
+        })),
+      );
     } finally {
       setIsBusy(false);
     }
@@ -193,5 +229,10 @@ export const RsvpWizard: React.FC = () => {
 
     case 'closed':
       return <RsvpClosed deadline={state.deadline} />;
+
+    default: {
+      const unhandled: never = state;
+      throw new Error(`Unhandled wizard step: ${JSON.stringify(unhandled)}`);
+    }
   }
 };
