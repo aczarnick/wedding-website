@@ -541,6 +541,11 @@ function failure(recordCount: number, rowErrors: RowError[]): ImportParseResult 
   return { ok: false, recordCount, rowErrors };
 }
 
+/** Recovers the count csv-parse had reached before it rejected the file. */
+function recordCountFrom(error: unknown): number {
+  return error instanceof CsvError && typeof error.records === 'number' ? error.records : 0;
+}
+
 /**
  * Reads the file into records, capturing the header so a missing required
  * column is reported once rather than as an error on every row.
@@ -665,7 +670,10 @@ export function parseImportCsv(text: string): ImportParseResult {
   try {
     ({ header, records } = readRecords(text));
   } catch (error) {
-    return failure(0, [
+    // `recordCount` must stay truthful on this branch too: Task 5 reads it
+    // before it inspects `ok`, so zeroing it here would misreport a file that
+    // is both oversized and malformed.
+    return failure(recordCountFrom(error), [
       { line: HEADER_LINE, reason: error instanceof Error ? error.message : 'Could not read the file' },
     ]);
   }
@@ -697,7 +705,8 @@ export function parseImportCsv(text: string): ImportParseResult {
     }
 
     const row = parsed.data;
-    const key = normalizeName(row.partyDisplayName).toLowerCase();
+    // Already normalized by the schema's transform; only case remains.
+    const key = row.partyDisplayName.toLowerCase();
     let accumulator = accumulators.get(key);
 
     if (!accumulator) {
