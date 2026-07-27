@@ -67,8 +67,18 @@ The stored `displayName` is the normalized value from the party's first row.
 
 Every failure is reported as `{ line, reason }`, where `line` is the 1-based line
 number **in the file** (the header is line 1, so the first data row is line 2).
-Validation is exhaustive: all rows are checked and all errors collected before
-anything is rejected.
+**Row validation is exhaustive**: once the file has parsed into records, every
+row is checked and every error collected before anything is rejected. This
+does not extend to structural parsing itself — a ragged row (wrong column
+count) aborts `csv-parse` mid-stream, so it is reported as a single error at
+the line it occurred on, and no row past that point is checked. A missing
+required column or a duplicate header column name is likewise a single
+header-level error (reported at line 1), found before any row is validated.
+
+The `invalid_csv` message counts distinct invalid **lines**, not the number of
+errors: a row that is blank in both `firstName` and `lastName` produces two
+entries in `rowErrors` but counts once toward "N invalid rows", since it is
+one bad row, not two.
 
 Line numbers come from `csv-parse`'s record metadata (`info: true`), **not** from
 counting array indices. A quoted field containing a newline spans several file
@@ -81,6 +91,7 @@ Error conditions:
 - The same `firstName` + `lastName` appears twice within one party.
 - A party's rows disagree on `message` or `addGuestCap`.
 - The party's display name already exists in the database.
+- The header contains the same column name twice.
 
 The last condition is the only one needing a query: one `findMany` over the
 distinct display names in the file, resolved before the transaction opens.
@@ -155,6 +166,17 @@ non-nullable — a batch-level entry has nowhere to live.
 - `Content-Disposition: attachment; filename="rsvps-YYYY-MM-DD.csv"` (today, UTC)
 - A leading UTF-8 BOM, so Excel renders names like "Nguyễn" correctly. Import
   passes `bom: true`, so the BOM does not break the round-trip.
+- `escape_formulas: true`: any field starting with `=`, `+`, `-`, `@`, a tab, or
+  a carriage return is prefixed with a `'`, so guest-supplied text (a message
+  or song request) cannot execute as a formula when the export is opened in a
+  spreadsheet. Import is the exact inverse — `csvSchemas.ts`'s message handling
+  strips exactly one leading `'` when, and only when, the character right
+  after it is one of those same trigger characters. A message that
+  legitimately starts with `'` (e.g. `'twas a lovely day`) has no trigger
+  character in that position, so it is left untouched. This asymmetric,
+  narrowly-scoped strip is what makes the round trip lossless: without it, a
+  message like `- Can't wait!` would gain one literal `'` every time it passed
+  through export and back.
 
 Columns, in order:
 
@@ -175,7 +197,7 @@ handlers — so the interesting logic is unit-tested without a database.
 
 | File | Purpose | Consumes | Produces |
 |---|---|---|---|
-| `src/lib/rsvp/csvSchemas.ts` | Zod schema for one import row; `IMPORT_COLUMNS`, `EXPORT_COLUMNS` | `zod`, `policy.normalizeName` | `importRowSchema`, column constants |
+| `src/lib/rsvp/csvSchemas.ts` | Zod schema for one import row; `REQUIRED_IMPORT_COLUMNS`, `EXPORT_COLUMNS` | `zod`, `policy.normalizeName` | `importRowSchema`, column constants |
 | `src/lib/rsvp/csvImport.ts` | **Pure.** Parsed rows → grouped, validated parties **or** a `rowErrors` list | `csvSchemas` | `parseImportCsv(text)`, `groupImportRows(rows)` |
 | `src/lib/rsvp/csvExport.ts` | **Pure.** Guest records → CSV text | `csv-stringify`, `EXPORT_COLUMNS` | `toExportCsv(records)` |
 | `src/lib/rsvp/admin/import.ts` | Collision query + create transaction + audit rows | Prisma, `csvImport` | `importParties(client, text, actorEmail, ipAddress)` |
@@ -217,20 +239,23 @@ unauthenticated / 403 non-allowlisted. Both handlers additionally call
   BOM present; null fields empty; header-only output for no records.
 - `csvSchemas` — trimming, length bounds, `addGuestCap` coercion and range.
 
-**Database integration — `test/db/csvImportExport.test.ts`:**
+**Database integration — `test/db/csvImport.test.ts`, `test/db/csvExport.test.ts`,
+`test/db/csvRoundTrip.test.ts`:**
 
 - Round-trip: import a sample CSV → export → the export contains exactly those
   parties and guests, with `rsvpStatus` `pending`.
 - Round-trip through live state: import, submit an RSVP, export → the export
   shows the submitted statuses and song requests.
-- A file with one malformed row leaves the database completely untouched.
+- A file with one malformed row leaves the database completely untouched, including
+  when the failure happens mid-transaction (a later party's create rejects after an
+  earlier one already succeeded).
 - A display name already present is rejected, and nothing is written.
 - A created party has exactly one `import` audit entry with the actor email.
 - Re-feeding an export does not overwrite live `rsvpStatus` (it is rejected on
   the collision, which is the safe outcome).
 
-The file lives under `test/db/` so the serialized `db` vitest project picks it
-up; placing it elsewhere would race the other DB suite.
+These files live under `test/db/` so the serialized `db` vitest project picks
+them up; placing one elsewhere would race the other DB suite.
 
 **Browser verification:** these are API-only endpoints with no UI in this issue.
 Verification drives the running app with authenticated and unauthenticated
