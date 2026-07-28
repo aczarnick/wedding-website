@@ -16,6 +16,18 @@ resource "azurerm_mssql_server" "this" {
     azuread_authentication_only = true
   }
 
+  # `CREATE USER [name] FROM EXTERNAL PROVIDER` makes the *server* call Microsoft
+  # Graph to resolve the name to a principal. Without an identity to call Graph
+  # with, that fails: "Principal could not be resolved ... Server identity is not
+  # configured", which broke the CI migrate job's ensure-db-user step.
+  #
+  # The identity alone is not enough — it also needs the Directory Readers role
+  # in Entra ID, a tenant-level grant requiring Global Administrator that the
+  # deploy service principal cannot make. See docs/deployment/README.md.
+  identity {
+    type = "SystemAssigned"
+  }
+
   tags = var.tags
 }
 
