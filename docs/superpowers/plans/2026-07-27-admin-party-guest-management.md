@@ -3348,6 +3348,17 @@ orders parties by `displayName` and guests by `(createdAt, id)` — reproducing 
 ordering on the client would be a second source of truth. Expanded-row state is keyed
 by party id, so it survives the refresh.
 
+Both screens read through `useLoadableResource` (`src/lib/admin/useLoadableResource.ts`),
+the read-side mirror of `useAdminMutation`: it owns the mount fetch, the error message,
+and the `reload` that every mutation calls. Its `load` argument **must** be a stable
+reference — a module-level function or one wrapped in `useCallback` — or the mount
+effect re-runs on every render and fetches forever; that is why `ModerationQueue`'s
+two-endpoint `loadQueue` sits at module scope. The effect calls `reload` from a function
+declared *inside* it, which is what satisfies the React Compiler's
+`set-state-in-effect` rule; referencing `reload` directly from the effect body trips it
+and would need an `eslint-disable`. The error clears at the start of `reload`, so a
+retry click visibly flips to the loading state instead of leaving the failure frozen.
+
 Destructive actions use `ConfirmButton`, never `window.confirm`: a native dialog blocks
 every subsequent browser event, which breaks browser-driven verification of these
 screens. Deleting a party warns that the delete cascades to its guests, matching
