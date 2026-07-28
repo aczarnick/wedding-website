@@ -62,7 +62,7 @@ export const PartyFields: React.FC<PartyFieldsProps> = ({ values, onChange, capH
       </div>
 
       <div>
-        <label className='text-xs text-sage-700' htmlFor={`${fieldId}-cap`}>
+        <label className='block text-xs text-sage-700' htmlFor={`${fieldId}-cap`}>
           Add-guest cap
         </label>
         <input
