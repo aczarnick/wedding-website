@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { NewPartyForm } from './NewPartyForm';
 import { PartyRow } from './PartyRow';
 import { fetchParties } from '@/lib/admin/client';
 import { ALL_STATUSES, filterParties } from '@/lib/admin/partyList';
-import type { AdminParty } from '@/lib/admin/projections';
+import { useLoadableResource } from '@/lib/admin/useLoadableResource';
 import { RSVP_STATUS } from '@/lib/enums';
-import { ApiError } from '@/lib/http/apiClient';
 
 const LOAD_ERROR_MESSAGE = 'We could not load the guest list. Please try again.';
 
@@ -22,44 +21,30 @@ const CONTROL_CLASSES =
   'mt-1 w-full rounded-md border border-sage-200 bg-white px-3 py-2 text-sm text-sage-800 focus:border-sage-700 focus:outline-none';
 
 export const PartyManager: React.FC = () => {
-  const [parties, setParties] = useState<AdminParty[] | null>(null);
-  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
+  const {
+    data: parties,
+    errorMessage,
+    reload,
+  } = useLoadableResource(fetchParties, LOAD_ERROR_MESSAGE);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<string>(ALL_STATUSES);
   const [expandedPartyId, setExpandedPartyId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const nextParties = await fetchParties();
-      setParties(nextParties);
-      setLoadErrorMessage(null);
-    } catch (error) {
-      setLoadErrorMessage(error instanceof ApiError ? error.message : LOAD_ERROR_MESSAGE);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Fetch-on-mount: there is no external subscription to attach here, so the
-    // effect's only job is the initial load.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
-
   const handleCreated = () => {
     setIsCreating(false);
-    void load();
+    void reload();
   };
 
-  if (loadErrorMessage) {
+  if (errorMessage) {
     return (
       <div>
         <p role='alert' data-testid='party-list-error' className='text-sm text-sage-800'>
-          {loadErrorMessage}
+          {errorMessage}
         </p>
         <button
           type='button'
-          onClick={() => void load()}
+          onClick={() => void reload()}
           className='mt-3 rounded-full border border-sage-300 px-4 py-1.5 text-sm text-sage-700 hover:bg-sage-100'
         >
           Try again
@@ -146,7 +131,7 @@ export const PartyManager: React.FC = () => {
             onToggle={() =>
               setExpandedPartyId((current) => (current === party.id ? null : party.id))
             }
-            onChanged={() => void load()}
+            onChanged={() => void reload()}
           />
         ))}
       </ul>
