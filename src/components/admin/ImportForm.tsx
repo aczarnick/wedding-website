@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { adminFetch, AdminRequestError } from '@/lib/admin/apiClient';
+import { requestJson, ApiError } from '@/lib/http/apiClient';
 import { isSessionExpired, toFailureMessage } from '@/lib/admin/requestError';
 import { SessionExpiredNotice } from './SessionExpiredNotice';
 import { ImportResult, type ImportOutcome, type RowError } from './ImportResult';
@@ -61,7 +61,7 @@ export const ImportForm: React.FC = () => {
     setSessionExpired(false);
 
     try {
-      const summary = await adminFetch<ImportSummary>('/api/admin/import', {
+      const summary = await requestJson<ImportSummary>('/api/admin/import', {
         method: 'POST',
         body: file,
       });
@@ -79,7 +79,7 @@ export const ImportForm: React.FC = () => {
           status: 'failure',
           message: toFailureMessage(error),
           rowErrors:
-            error instanceof AdminRequestError ? toRowErrors(error.details.rowErrors) : undefined,
+            error instanceof ApiError ? toRowErrors(error.details.rowErrors) : undefined,
         });
       }
     } finally {

@@ -132,7 +132,9 @@ describe('ImportForm', () => {
 
     submit();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the server.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not reach the server. Please check your connection and try again.',
+    );
   });
 
   it('clears the previous result when a new file is chosen', async () => {

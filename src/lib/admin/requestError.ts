@@ -1,12 +1,12 @@
-import { AdminRequestError } from '@/lib/admin/apiClient';
+import { ApiError } from '@/lib/http/apiClient';
 
 /**
- * Browser-side, like `apiClient`. A failed admin request is either an
- * `AdminRequestError` carrying the API's own message, or a rejected `fetch`
- * that never reached the server.
+ * Browser-side. Every failed admin request arrives as an `ApiError` — including
+ * an unreachable server, which the transport maps rather than rethrowing — so the
+ * fallback here only covers a genuinely unexpected throw.
  */
 export function toFailureMessage(error: unknown): string {
-  return error instanceof AdminRequestError ? error.message : 'Could not reach the server.';
+  return error instanceof ApiError ? error.message : 'Something went wrong. Please try again.';
 }
 
 /**
@@ -15,5 +15,5 @@ export function toFailureMessage(error: unknown): string {
  * background request, where the admin needs to be told rather than moved.
  */
 export function isSessionExpired(error: unknown): boolean {
-  return error instanceof AdminRequestError && error.status === 401;
+  return error instanceof ApiError && error.status === 401;
 }

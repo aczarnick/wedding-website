@@ -82,7 +82,51 @@ Dashboard totals come from `getSummaryStats()` (`src/lib/admin/stats.ts`), one
 three status counts, never a separate query that could disagree with them, and
 every count filters `deletedAt: null` on the guest *and* its party.
 
-Design: `docs/superpowers/specs/2026-07-27-admin-dashboard-shell-design.md`.
+`/admin/parties` and `/admin/moderation` are the management screens. Both are thin
+server pages rendering one client component, and every read and write goes through
+`/api/admin/*` via `src/lib/admin/client.ts` — never through the services directly.
+Routing mutations through the API keeps `handleAdminRequest()` as the single audited
+entry path, so no second code path can write without an `actorEmail`.
+
+Search and the status filter are **client-side** (`filterParties` in
+`src/lib/admin/partyList.ts`): `GET /api/admin/parties` already returns every live
+party with its live guests nested, so the whole screen is one request. Search spans
+guest names as well as the party display name.
+
+Every mutation is followed by a re-fetch rather than a local merge, because the server
+orders parties by `displayName` and guests by `(createdAt, id)` — reproducing that
+ordering on the client would be a second source of truth. Expanded-row state is keyed
+by party id, so it survives the refresh.
+
+Both screens read through `useLoadableResource` (`src/lib/admin/useLoadableResource.ts`),
+the read-side mirror of `useAdminMutation`: it owns the mount fetch, the error message,
+and the `reload` that every mutation calls. Its `load` argument **must** be a stable
+reference — a module-level function or one wrapped in `useCallback` — or the mount
+effect re-runs on every render and fetches forever; that is why `ModerationQueue`'s
+two-endpoint `loadQueue` sits at module scope. The effect calls `reload` from a function
+declared *inside* it, which is what satisfies the React Compiler's
+`set-state-in-effect` rule; referencing `reload` directly from the effect body trips it
+and would need an `eslint-disable`. The error clears at the start of `reload`, so a
+retry click visibly flips to the loading state instead of leaving the failure frozen.
+
+Destructive actions use `ConfirmButton`, never `window.confirm`: a native dialog blocks
+every subsequent browser event, which breaks browser-driven verification of these
+screens. Deleting a party warns that the delete cascades to its guests, matching
+`softDeleteParty`.
+
+The moderation queue fetches flagged guests **and** parties, because
+`GET /api/admin/guests?flagged=true` carries only `partyId` and the question a moderator
+is answering is which party added the plus-one. Approving clears the flag but leaves
+`source = guest_added`, so the guest still counts against that party's add-guest cap —
+the card says so, since it is otherwise invisible. A guest resolved elsewhere returns
+**409 `guest_not_flagged`**, shown inline.
+
+The per-party `addGuestCap` is edited here; the global `Settings.defaultAddGuestCap`
+belongs to the settings screen (#70). `src/lib/http/apiClient.ts` holds the shared
+`requestJson`/`ApiError` transport used by both the admin and the guest RSVP clients.
+
+Design: `docs/superpowers/specs/2026-07-27-admin-dashboard-shell-design.md`,
+`docs/superpowers/specs/2026-07-27-admin-party-guest-management-design.md`.
 
 ### RSVP guest API
 

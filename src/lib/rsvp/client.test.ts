@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { RsvpApiError, fetchParty, searchParties, submitRsvp } from './client';
+import { fetchParty, searchParties, submitRsvp } from './client';
 import type { PartyDetail, SubmitRsvpBody } from '@/lib/rsvp/types';
 
 const jsonResponse = (status: number, body: unknown): Response =>
@@ -66,41 +66,5 @@ describe('submitRsvp', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(SUBMIT_BODY),
     });
-  });
-});
-
-describe('error mapping', () => {
-  it('carries the server code, message and extra details', async () => {
-    stubFetch(jsonResponse(403, {
-      error: 'RSVPs are closed.',
-      code: 'rsvp_closed',
-      deadline: '2026-09-10T00:00:00.000Z',
-    }));
-
-    const error = await fetchParty(PARTY.id).catch((caught: unknown) => caught);
-
-    expect(error).toBeInstanceOf(RsvpApiError);
-    expect(error).toMatchObject({
-      status: 403,
-      code: 'rsvp_closed',
-      message: 'RSVPs are closed.',
-      details: { deadline: '2026-09-10T00:00:00.000Z' },
-    });
-  });
-
-  it('falls back to unknown_error when the failure body is not JSON', async () => {
-    stubFetch(new Response('<html>gateway blew up</html>', { status: 500 }));
-
-    const error = await fetchParty(PARTY.id).catch((caught: unknown) => caught);
-
-    expect(error).toMatchObject({ status: 500, code: 'unknown_error' });
-  });
-
-  it('reports an unreachable server as network_error', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
-
-    const error = await fetchParty(PARTY.id).catch((caught: unknown) => caught);
-
-    expect(error).toMatchObject({ status: 0, code: 'network_error' });
   });
 });
