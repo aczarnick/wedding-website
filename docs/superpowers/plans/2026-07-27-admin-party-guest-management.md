@@ -20,6 +20,8 @@ Design spec: `docs/superpowers/specs/2026-07-27-admin-party-guest-management-des
 - Comments: XML/JSDoc `/** … */` only on exported APIs whose contract is non-obvious. No narration.
 - Never call `window.confirm`/`alert` — a native dialog blocks browser-driven verification.
 - Never assert on a bare `getByRole('alert')` in tests: the Next dev overlay matches it. Scope to the element under test.
+- **Component tests drive the DOM with `fireEvent` from `@testing-library/react`, never `@testing-library/user-event`** — that package is not a dependency of this repo and must not be added; all nine pre-existing component test files use `fireEvent`. Typing is `fireEvent.change(el, { target: { value: 'x' } })` (it replaces the value, so no separate `clear` step is needed); selecting an option is the same call with the option's value. `fireEvent` is synchronous, so these calls are not awaited; keep `waitFor` only for assertions that depend on a resolved promise.
+- **Add no dependency, and never run `npm install` on this machine** — it prunes cross-platform optional deps (`@emnapi/*`) from the lockfile and breaks CI's `npm ci`, and `npm ci --dry-run` does not exist to catch it. If a task appears to need a package, stop and report instead.
 - The admin API is **not** modified by this plan. No changes under `src/app/api/`, `src/lib/admin/{parties,guests,settings,stats,route,schemas,projections,audit-log}.ts`.
 - Verification gate, in CI order: `npm run lint && npm run check:images && npm test && npm run build`.
 
@@ -548,7 +550,7 @@ export const moderateGuest = (
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/lib/admin/client.test.ts`
-Expected: PASS, 9 tests.
+Expected: PASS, 10 tests.
 
 - [ ] **Step 5: Add the mutation hook**
 
@@ -700,6 +702,24 @@ describe('summarizeGuests', () => {
       flagged: 0,
     });
   });
+
+  // Every counter takes a distinct value and flagged (2) differs from unflagged
+  // (1), so a transposed status branch or an inverted flag check cannot pass.
+  it('keeps the counters independent when several differ at once', () => {
+    const guests = [
+      guest({ id: 'f', rsvpStatus: 'attending', flaggedForReview: true }),
+      guest({ id: 'g', rsvpStatus: 'declined', flaggedForReview: true }),
+      guest({ id: 'h', rsvpStatus: 'declined' }),
+    ];
+
+    expect(summarizeGuests(guests)).toEqual({
+      total: 3,
+      attending: 1,
+      declined: 2,
+      pending: 0,
+      flagged: 2,
+    });
+  });
 });
 
 describe('filterParties', () => {
@@ -817,7 +837,7 @@ export function filterParties(
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/lib/admin/partyList.test.ts`
-Expected: PASS, 11 tests.
+Expected: PASS, 12 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -847,8 +867,7 @@ Create `src/components/admin/ConfirmButton.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ConfirmButton } from './ConfirmButton';
 
 const setup = (props: Partial<React.ComponentProps<typeof ConfirmButton>> = {}) => {
@@ -863,51 +882,54 @@ const setup = (props: Partial<React.ComponentProps<typeof ConfirmButton>> = {}) 
     />,
   );
 
-  return { onConfirm, user: userEvent.setup() };
+  return { onConfirm };
 };
 
-describe('ConfirmButton', () => {
-  it('does not act on the first click', async () => {
-    const { onConfirm, user } = setup();
+const clickButton = (name: string) =>
+  fireEvent.click(screen.getByRole('button', { name }));
 
-    await user.click(screen.getByRole('button', { name: 'Remove' }));
+describe('ConfirmButton', () => {
+  it('does not act on the first click', () => {
+    const { onConfirm } = setup();
+
+    clickButton('Remove');
 
     expect(onConfirm).not.toHaveBeenCalled();
     expect(screen.getByText('Remove Jane Smith?')).toBeInTheDocument();
   });
 
-  it('calls onConfirm once the prompt is confirmed', async () => {
-    const { onConfirm, user } = setup();
+  it('calls onConfirm once the prompt is confirmed', () => {
+    const { onConfirm } = setup();
 
-    await user.click(screen.getByRole('button', { name: 'Remove' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, remove' }));
+    clickButton('Remove');
+    clickButton('Yes, remove');
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('restores the original button on cancel without acting', async () => {
-    const { onConfirm, user } = setup();
+  it('restores the original button on cancel without acting', () => {
+    const { onConfirm } = setup();
 
-    await user.click(screen.getByRole('button', { name: 'Remove' }));
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    clickButton('Remove');
+    clickButton('Cancel');
 
     expect(onConfirm).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
     expect(screen.queryByText('Remove Jane Smith?')).not.toBeInTheDocument();
   });
 
-  it('disables the confirm button while the write is in flight', async () => {
-    const { user } = setup({ isBusy: true });
+  it('disables the confirm button while the write is in flight', () => {
+    setup({ isBusy: true });
 
-    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    clickButton('Remove');
 
     expect(screen.getByRole('button', { name: 'Removing…' })).toBeDisabled();
   });
 
-  it('uses a custom confirm label when given one', async () => {
-    const { user } = setup({ confirmLabel: 'Yes, delete party' });
+  it('uses a custom confirm label when given one', () => {
+    setup({ confirmLabel: 'Yes, delete party' });
 
-    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    clickButton('Remove');
 
     expect(screen.getByRole('button', { name: 'Yes, delete party' })).toBeInTheDocument();
   });
@@ -1042,8 +1064,7 @@ Create `src/components/admin/GuestForm.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { GuestForm } from './GuestForm';
 import type { AdminGuest } from '@/lib/admin/projections';
 
@@ -1075,16 +1096,16 @@ const setup = (props: Partial<React.ComponentProps<typeof GuestForm>> = {}) => {
     />,
   );
 
-  return { onSubmit, onCancel, user: userEvent.setup() };
+  return { onSubmit, onCancel };
 };
 
 describe('GuestForm', () => {
-  it('submits a trimmed new guest defaulting to pending with no song request', async () => {
-    const { onSubmit, user } = setup();
+  it('submits a trimmed new guest defaulting to pending with no song request', () => {
+    const { onSubmit } = setup();
 
-    await user.type(screen.getByLabelText('First name'), '  John  ');
-    await user.type(screen.getByLabelText('Last name'), ' Smith ');
-    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: '  John  ' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: ' Smith ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
 
     expect(onSubmit).toHaveBeenCalledWith({
       firstName: 'John',
@@ -1094,11 +1115,11 @@ describe('GuestForm', () => {
     });
   });
 
-  it('records an RSVP on the guest’s behalf, including pending', async () => {
-    const { onSubmit, user } = setup({ initialGuest: EXISTING, submitLabel: 'Save guest' });
+  it('records an RSVP on the guest’s behalf, including pending', () => {
+    const { onSubmit } = setup({ initialGuest: EXISTING, submitLabel: 'Save guest' });
 
-    await user.selectOptions(screen.getByLabelText('RSVP status'), 'declined');
-    await user.click(screen.getByRole('button', { name: 'Save guest' }));
+    fireEvent.change(screen.getByLabelText('RSVP status'), { target: { value: 'declined' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save guest' }));
 
     expect(onSubmit).toHaveBeenCalledWith({
       firstName: 'Jane',
@@ -1117,20 +1138,20 @@ describe('GuestForm', () => {
     expect(screen.getByLabelText('Song request')).toHaveValue('September');
   });
 
-  it('clears an emptied song request to null rather than an empty string', async () => {
-    const { onSubmit, user } = setup({ initialGuest: EXISTING, submitLabel: 'Save guest' });
+  it('clears an emptied song request to null rather than an empty string', () => {
+    const { onSubmit } = setup({ initialGuest: EXISTING, submitLabel: 'Save guest' });
 
-    await user.clear(screen.getByLabelText('Song request'));
-    await user.click(screen.getByRole('button', { name: 'Save guest' }));
+    fireEvent.change(screen.getByLabelText('Song request'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save guest' }));
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ songRequest: null }));
   });
 
-  it('will not submit without both names', async () => {
-    const { onSubmit, user } = setup();
+  it('will not submit without both names', () => {
+    const { onSubmit } = setup();
 
-    await user.type(screen.getByLabelText('First name'), 'John');
-    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'John' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Add guest' })).toBeDisabled();
@@ -1144,10 +1165,10 @@ describe('GuestForm', () => {
     );
   });
 
-  it('cancels without submitting', async () => {
-    const { onCancel, onSubmit, user } = setup();
+  it('cancels without submitting', () => {
+    const { onCancel, onSubmit } = setup();
 
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onSubmit).not.toHaveBeenCalled();
@@ -1335,8 +1356,7 @@ Create `src/components/admin/GuestList.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { GuestList } from './GuestList';
 import { createGuest, deleteGuest, updateGuest } from '@/lib/admin/client';
 import { ApiError } from '@/lib/http/apiClient';
@@ -1376,7 +1396,7 @@ const setup = (guests: AdminGuest[] = [guest({}), ADDED]) => {
 
   render(<GuestList partyId='party-1' guests={guests} addGuestCap={2} onChanged={onChanged} />);
 
-  return { onChanged, user: userEvent.setup() };
+  return { onChanged };
 };
 
 beforeEach(() => {
@@ -1414,12 +1434,12 @@ describe('GuestList', () => {
   });
 
   it('creates a guest against this party and refreshes', async () => {
-    const { onChanged, user } = setup();
+    const { onChanged } = setup();
 
-    await user.click(screen.getByRole('button', { name: 'Add guest' }));
-    await user.type(screen.getByLabelText('First name'), 'New');
-    await user.type(screen.getByLabelText('Last name'), 'Guest');
-    await user.click(screen.getByRole('button', { name: 'Save guest' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'New' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Guest' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save guest' }));
 
     await waitFor(() =>
       expect(createGuest).toHaveBeenCalledWith({
@@ -1434,11 +1454,11 @@ describe('GuestList', () => {
   });
 
   it('patches an edited guest by id and refreshes', async () => {
-    const { onChanged, user } = setup([guest({})]);
+    const { onChanged } = setup([guest({})]);
 
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
-    await user.selectOptions(screen.getByLabelText('RSVP status'), 'declined');
-    await user.click(screen.getByRole('button', { name: 'Save guest' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(screen.getByLabelText('RSVP status'), { target: { value: 'declined' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save guest' }));
 
     await waitFor(() =>
       expect(updateGuest).toHaveBeenCalledWith('guest-1', {
@@ -1452,12 +1472,12 @@ describe('GuestList', () => {
   });
 
   it('deletes a guest only after the confirmation is accepted', async () => {
-    const { onChanged, user } = setup([guest({})]);
+    const { onChanged } = setup([guest({})]);
 
-    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(deleteGuest).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: 'Yes, remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
 
     await waitFor(() => expect(deleteGuest).toHaveBeenCalledWith('guest-1'));
     expect(onChanged).toHaveBeenCalledTimes(1);
@@ -1467,12 +1487,12 @@ describe('GuestList', () => {
     vi.mocked(createGuest).mockRejectedValue(
       new ApiError(400, 'invalid_request', 'Must be between 1 and 100 characters'),
     );
-    const { onChanged, user } = setup([]);
+    const { onChanged } = setup([]);
 
-    await user.click(screen.getByRole('button', { name: 'Add guest' }));
-    await user.type(screen.getByLabelText('First name'), 'New');
-    await user.type(screen.getByLabelText('Last name'), 'Guest');
-    await user.click(screen.getByRole('button', { name: 'Save guest' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'New' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Guest' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save guest' }));
 
     await waitFor(() =>
       expect(screen.getByTestId('guest-form-error')).toHaveTextContent(
@@ -1706,8 +1726,7 @@ Create `src/components/admin/NewPartyForm.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { NewPartyForm } from './NewPartyForm';
 import { createParty } from '@/lib/admin/client';
 import { ApiError } from '@/lib/http/apiClient';
@@ -1720,7 +1739,7 @@ const setup = () => {
 
   render(<NewPartyForm onCreated={onCreated} onCancel={onCancel} />);
 
-  return { onCreated, onCancel, user: userEvent.setup() };
+  return { onCreated, onCancel };
 };
 
 beforeEach(() => {
@@ -1737,15 +1756,15 @@ beforeEach(() => {
 
 describe('NewPartyForm', () => {
   it('creates a party with its guests in one call and reports success', async () => {
-    const { onCreated, user } = setup();
+    const { onCreated } = setup();
 
-    await user.type(screen.getByLabelText('Display name'), 'The Smith Family');
-    await user.type(screen.getByLabelText('Guest 1 first name'), 'John');
-    await user.type(screen.getByLabelText('Guest 1 last name'), 'Smith');
-    await user.click(screen.getByRole('button', { name: 'Add another guest' }));
-    await user.type(screen.getByLabelText('Guest 2 first name'), 'Jane');
-    await user.type(screen.getByLabelText('Guest 2 last name'), 'Smith');
-    await user.click(screen.getByRole('button', { name: 'Create party' }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'The Smith Family' } });
+    fireEvent.change(screen.getByLabelText('Guest 1 first name'), { target: { value: 'John' } });
+    fireEvent.change(screen.getByLabelText('Guest 1 last name'), { target: { value: 'Smith' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add another guest' }));
+    fireEvent.change(screen.getByLabelText('Guest 2 first name'), { target: { value: 'Jane' } });
+    fireEvent.change(screen.getByLabelText('Guest 2 last name'), { target: { value: 'Smith' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
 
     await waitFor(() =>
       expect(createParty).toHaveBeenCalledWith({
@@ -1764,9 +1783,9 @@ describe('NewPartyForm', () => {
   it('sends the entered add-guest cap, including zero', async () => {
     const { user } = setup();
 
-    await user.type(screen.getByLabelText('Display name'), 'Aunt Marge');
-    await user.type(screen.getByLabelText('Add-guest cap'), '0');
-    await user.click(screen.getByRole('button', { name: 'Create party' }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Aunt Marge' } });
+    fireEvent.change(screen.getByLabelText('Add-guest cap'), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
 
     await waitFor(() =>
       expect(createParty).toHaveBeenCalledWith(expect.objectContaining({ addGuestCap: 0 })),
@@ -1776,8 +1795,8 @@ describe('NewPartyForm', () => {
   it('omits a blank cap so the server default applies', async () => {
     const { user } = setup();
 
-    await user.type(screen.getByLabelText('Display name'), 'Aunt Marge');
-    await user.click(screen.getByRole('button', { name: 'Create party' }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Aunt Marge' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
 
     await waitFor(() =>
       expect(createParty).toHaveBeenCalledWith(
@@ -1789,29 +1808,29 @@ describe('NewPartyForm', () => {
   it('allows a party with no guests yet', async () => {
     const { user } = setup();
 
-    await user.type(screen.getByLabelText('Display name'), 'Aunt Marge');
-    await user.click(screen.getByRole('button', { name: 'Create party' }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Aunt Marge' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
 
     await waitFor(() =>
       expect(createParty).toHaveBeenCalledWith(expect.objectContaining({ guests: [] })),
     );
   });
 
-  it('refuses to submit without a display name', async () => {
+  it('refuses to submit without a display name', () => {
     const { user } = setup();
 
-    await user.click(screen.getByRole('button', { name: 'Create party' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
 
     expect(createParty).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Create party' })).toBeDisabled();
   });
 
-  it('refuses to submit a half-filled guest row rather than dropping it', async () => {
+  it('refuses to submit a half-filled guest row rather than dropping it', () => {
     const { user } = setup();
 
-    await user.type(screen.getByLabelText('Display name'), 'The Smith Family');
-    await user.type(screen.getByLabelText('Guest 1 first name'), 'John');
-    await user.click(screen.getByRole('button', { name: 'Create party' }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'The Smith Family' } });
+    fireEvent.change(screen.getByLabelText('Guest 1 first name'), { target: { value: 'John' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
 
     expect(createParty).not.toHaveBeenCalled();
     expect(screen.getByTestId('new-party-error')).toHaveTextContent(
@@ -1822,13 +1841,13 @@ describe('NewPartyForm', () => {
   it('drops a removed guest row from the payload', async () => {
     const { user } = setup();
 
-    await user.type(screen.getByLabelText('Display name'), 'The Smith Family');
-    await user.type(screen.getByLabelText('Guest 1 first name'), 'John');
-    await user.type(screen.getByLabelText('Guest 1 last name'), 'Smith');
-    await user.click(screen.getByRole('button', { name: 'Add another guest' }));
-    await user.type(screen.getByLabelText('Guest 2 first name'), 'Jane');
-    await user.click(screen.getByRole('button', { name: 'Remove guest 2' }));
-    await user.click(screen.getByRole('button', { name: 'Create party' }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'The Smith Family' } });
+    fireEvent.change(screen.getByLabelText('Guest 1 first name'), { target: { value: 'John' } });
+    fireEvent.change(screen.getByLabelText('Guest 1 last name'), { target: { value: 'Smith' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add another guest' }));
+    fireEvent.change(screen.getByLabelText('Guest 2 first name'), { target: { value: 'Jane' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove guest 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
 
     await waitFor(() =>
       expect(createParty).toHaveBeenCalledWith(
@@ -1845,10 +1864,10 @@ describe('NewPartyForm', () => {
     vi.mocked(createParty).mockRejectedValue(
       new ApiError(400, 'invalid_request', 'Must be between 1 and 100 characters'),
     );
-    const { onCreated, user } = setup();
+    const { onCreated } = setup();
 
-    await user.type(screen.getByLabelText('Display name'), 'x');
-    await user.click(screen.getByRole('button', { name: 'Create party' }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
 
     await waitFor(() =>
       expect(screen.getByTestId('new-party-error')).toHaveTextContent(
@@ -2145,8 +2164,7 @@ Create `src/components/admin/PartyEditForm.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PartyEditForm } from './PartyEditForm';
 import { deleteParty, updateParty } from '@/lib/admin/client';
 import { ApiError } from '@/lib/http/apiClient';
@@ -2183,7 +2201,7 @@ const setup = (party: AdminParty = PARTY) => {
 
   render(<PartyEditForm party={party} onSaved={onSaved} onCancel={onCancel} />);
 
-  return { onSaved, onCancel, user: userEvent.setup() };
+  return { onSaved, onCancel };
 };
 
 beforeEach(() => {
@@ -2201,13 +2219,11 @@ describe('PartyEditForm', () => {
   });
 
   it('patches the changed fields and reports success', async () => {
-    const { onSaved, user } = setup();
+    const { onSaved } = setup();
 
-    await user.clear(screen.getByLabelText('Display name'));
-    await user.type(screen.getByLabelText('Display name'), 'The Smiths');
-    await user.clear(screen.getByLabelText('Add-guest cap'));
-    await user.type(screen.getByLabelText('Add-guest cap'), '4');
-    await user.click(screen.getByRole('button', { name: 'Save party' }));
+    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'The Smiths' } });
+    fireEvent.change(screen.getByLabelText('Add-guest cap'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save party' }));
 
     await waitFor(() =>
       expect(updateParty).toHaveBeenCalledWith('party-1', {
@@ -2222,8 +2238,8 @@ describe('PartyEditForm', () => {
   it('clears an emptied message to null', async () => {
     const { user } = setup();
 
-    await user.clear(screen.getByLabelText('Message'));
-    await user.click(screen.getByRole('button', { name: 'Save party' }));
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save party' }));
 
     await waitFor(() =>
       expect(updateParty).toHaveBeenCalledWith('party-1', expect.objectContaining({ message: null })),
@@ -2231,22 +2247,22 @@ describe('PartyEditForm', () => {
   });
 
   it('names the guest cascade in the delete confirmation and deletes only once accepted', async () => {
-    const { onSaved, user } = setup();
+    const { onSaved } = setup();
 
-    await user.click(screen.getByRole('button', { name: 'Delete party' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete party' }));
     expect(screen.getByText('Remove this party and its 1 guest?')).toBeInTheDocument();
     expect(deleteParty).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: 'Yes, delete party' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, delete party' }));
 
     await waitFor(() => expect(deleteParty).toHaveBeenCalledWith('party-1'));
     expect(onSaved).toHaveBeenCalledTimes(1);
   });
 
-  it('pluralizes the cascade warning', async () => {
+  it('pluralizes the cascade warning', () => {
     const { user } = setup({ ...PARTY, guests: [...PARTY.guests, ...PARTY.guests] });
 
-    await user.click(screen.getByRole('button', { name: 'Delete party' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete party' }));
 
     expect(screen.getByText('Remove this party and its 2 guests?')).toBeInTheDocument();
   });
@@ -2255,9 +2271,9 @@ describe('PartyEditForm', () => {
     vi.mocked(updateParty).mockRejectedValue(
       new ApiError(400, 'invalid_request', 'Must be between 1 and 100 characters'),
     );
-    const { onSaved, user } = setup();
+    const { onSaved } = setup();
 
-    await user.click(screen.getByRole('button', { name: 'Save party' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save party' }));
 
     await waitFor(() =>
       expect(screen.getByTestId('party-edit-error')).toHaveTextContent(
@@ -2409,8 +2425,7 @@ Create `src/components/admin/PartyManager.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PartyManager } from './PartyManager';
 import { deleteParty, fetchParties } from '@/lib/admin/client';
 import { ApiError } from '@/lib/http/apiClient';
@@ -2467,7 +2482,6 @@ beforeEach(() => {
   vi.mocked(deleteParty).mockReset().mockResolvedValue(SMITHS);
 });
 
-const user = () => userEvent.setup();
 
 describe('PartyManager', () => {
   it('lists every party with its guest tally once loaded', async () => {
@@ -2480,71 +2494,65 @@ describe('PartyManager', () => {
   });
 
   it('filters by the search box across party and guest names', async () => {
-    const session = user();
     render(<PartyManager />);
     await screen.findByText('The Smith Family');
 
-    await session.type(screen.getByLabelText('Search parties and guests'), 'wei');
+    fireEvent.change(screen.getByLabelText('Search parties and guests'), { target: { value: 'wei' } });
 
     expect(screen.getByText('The Chen Family')).toBeInTheDocument();
     expect(screen.queryByText('The Smith Family')).not.toBeInTheDocument();
   });
 
   it('filters by RSVP status', async () => {
-    const session = user();
     render(<PartyManager />);
     await screen.findByText('The Smith Family');
 
-    await session.selectOptions(screen.getByLabelText('RSVP status'), 'declined');
+    fireEvent.change(screen.getByLabelText('RSVP status'), { target: { value: 'declined' } });
 
     expect(screen.getByText('The Chen Family')).toBeInTheDocument();
     expect(screen.queryByText('The Smith Family')).not.toBeInTheDocument();
   });
 
   it('reports when nothing matches the current search', async () => {
-    const session = user();
     render(<PartyManager />);
     await screen.findByText('The Smith Family');
 
-    await session.type(screen.getByLabelText('Search parties and guests'), 'nobody');
+    fireEvent.change(screen.getByLabelText('Search parties and guests'), { target: { value: 'nobody' } });
 
     expect(screen.getByText('No parties match this search.')).toBeInTheDocument();
   });
 
   it('reveals a party’s guests when its row is expanded', async () => {
-    const session = user();
     render(<PartyManager />);
     await screen.findByText('The Smith Family');
 
     expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
 
-    await session.click(screen.getByRole('button', { name: /The Smith Family/ }));
+    fireEvent.click(screen.getByRole('button', { name: /The Smith Family/ }));
 
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByLabelText('Display name')).toHaveValue('The Smith Family');
   });
 
   it('re-fetches the list after a party is deleted', async () => {
-    const session = user();
     render(<PartyManager />);
     await screen.findByText('The Smith Family');
 
-    await session.click(screen.getByRole('button', { name: /The Smith Family/ }));
-    await session.click(screen.getByRole('button', { name: 'Delete party' }));
-    await session.click(screen.getByRole('button', { name: 'Yes, delete party' }));
+    fireEvent.click(screen.getByRole('button', { name: /The Smith Family/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete party' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, delete party' }));
 
     await waitFor(() => expect(fetchParties).toHaveBeenCalledTimes(2));
   });
 
   it('opens the create form and closes it again on cancel', async () => {
-    const session = user();
     render(<PartyManager />);
     await screen.findByText('The Smith Family');
 
-    await session.click(screen.getByRole('button', { name: 'New party' }));
+    fireEvent.click(screen.getByRole('button', { name: 'New party' }));
     expect(screen.getByRole('heading', { name: 'New party' })).toBeInTheDocument();
 
-    await session.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('heading', { name: 'New party' })).not.toBeInTheDocument();
   });
 
@@ -2559,14 +2567,13 @@ describe('PartyManager', () => {
     vi.mocked(fetchParties).mockRejectedValueOnce(
       new ApiError(500, 'server_error', 'The guest list is unavailable.'),
     );
-    const session = user();
     render(<PartyManager />);
 
     expect(await screen.findByTestId('party-list-error')).toHaveTextContent(
       'The guest list is unavailable.',
     );
 
-    await session.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('The Smith Family')).toBeInTheDocument();
   });
@@ -2897,8 +2904,7 @@ Create `src/components/admin/ModerationQueue.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ModerationQueue } from './ModerationQueue';
 import { fetchFlaggedGuests, fetchParties, moderateGuest } from '@/lib/admin/client';
 import { ApiError } from '@/lib/http/apiClient';
@@ -2939,7 +2945,6 @@ beforeEach(() => {
   vi.mocked(moderateGuest).mockReset().mockResolvedValue(FLAGGED);
 });
 
-const user = () => userEvent.setup();
 
 describe('ModerationQueue', () => {
   it('names the guest and the party that added them', async () => {
@@ -2961,25 +2966,23 @@ describe('ModerationQueue', () => {
   });
 
   it('approves without a confirmation step and refreshes', async () => {
-    const session = user();
     render(<ModerationQueue />);
     await screen.findByText('Sam Rivera');
 
-    await session.click(screen.getByRole('button', { name: 'Approve' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
 
     await waitFor(() => expect(moderateGuest).toHaveBeenCalledWith('guest-9', 'approve'));
     await waitFor(() => expect(fetchFlaggedGuests).toHaveBeenCalledTimes(2));
   });
 
   it('removes only after the confirmation is accepted', async () => {
-    const session = user();
     render(<ModerationQueue />);
     await screen.findByText('Sam Rivera');
 
-    await session.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(moderateGuest).not.toHaveBeenCalled();
 
-    await session.click(screen.getByRole('button', { name: 'Yes, remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
 
     await waitFor(() => expect(moderateGuest).toHaveBeenCalledWith('guest-9', 'remove'));
   });
@@ -3002,11 +3005,10 @@ describe('ModerationQueue', () => {
     vi.mocked(moderateGuest).mockRejectedValue(
       new ApiError(409, 'guest_not_flagged', 'This guest is not awaiting moderation'),
     );
-    const session = user();
     render(<ModerationQueue />);
     await screen.findByText('Sam Rivera');
 
-    await session.click(screen.getByRole('button', { name: 'Approve' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
 
     await waitFor(() =>
       expect(screen.getByTestId('moderation-error-guest-9')).toHaveTextContent(
@@ -3019,14 +3021,13 @@ describe('ModerationQueue', () => {
     vi.mocked(fetchFlaggedGuests).mockRejectedValueOnce(
       new ApiError(500, 'server_error', 'The queue is unavailable.'),
     );
-    const session = user();
     render(<ModerationQueue />);
 
     expect(await screen.findByTestId('moderation-load-error')).toHaveTextContent(
       'The queue is unavailable.',
     );
 
-    await session.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('Sam Rivera')).toBeInTheDocument();
   });
