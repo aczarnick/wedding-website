@@ -70,6 +70,21 @@ describe('summarizeGuests', () => {
       flagged: 0,
     });
   });
+
+  it('tallies all counters distinctly with mixed statuses and flags', () => {
+    const mixed = [
+      guest({ id: 'x', firstName: 'Alex', lastName: 'One', rsvpStatus: 'attending', flaggedForReview: false }),
+      guest({ id: 'y', firstName: 'Beth', lastName: 'Two', rsvpStatus: 'declined', flaggedForReview: true }),
+      guest({ id: 'z', firstName: 'Carol', lastName: 'Three', rsvpStatus: 'declined', flaggedForReview: true }),
+    ];
+    expect(summarizeGuests(mixed)).toEqual({
+      total: 3,
+      attending: 1,
+      declined: 2,
+      pending: 0,
+      flagged: 2,
+    });
+  });
 });
 
 describe('filterParties', () => {
