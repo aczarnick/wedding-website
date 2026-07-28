@@ -249,13 +249,37 @@ floor" — consistent with production's warm `min_replicas = 1` policy.
   the RG-Contributor infra identity needs no directory permission). These must
   exist **before** the first `infra` apply or the plan fails on an unset var.
 
-### Auth.js secret plumbing (scaffolded here, filled by the auth issue)
+### Admin console sign-in
 
-Terraform generates `AUTH_SECRET` and wires the Container App env. The Google
-OAuth secrets (`google-client-id` / `google-client-secret`) are defined but
-**empty** — supplied later via the `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
-GitHub secrets once the OAuth app exists. The admin allowlist is a GitHub repo
-variable **`ADMIN_EMAIL_ALLOWLIST`** (comma-separated emails), set by hand.
+Terraform generates `AUTH_SECRET` (never hand-managed) and wires two more values
+into the Container App. Both come from **GitHub secrets**, so they are masked in
+pipeline logs:
+
+| GitHub secret | Becomes | Shape |
+| --- | --- | --- |
+| `ADMIN_EMAIL` | `ADMIN_EMAIL` env var | Comma-separated addresses; doubles as the authorization allowlist |
+| `ADMIN_PASSWORD_HASH` | `ADMIN_PASSWORD_HASH`, via the ACA secret `admin-password-hash` | scrypt hash from `npm run auth:hash` |
+
+Generate the hash locally and paste the **hash**, never the password:
+
+```bash
+npm run auth:hash   # prompts for the password, prints scrypt:16384:8:1:<salt>:<key>
+```
+
+Until both secrets are set, the console denies every sign-in — `ADMIN_EMAIL`
+unset is an empty allowlist, and the hash comparison fails against an empty
+string. The app still boots normally: both are read inside functions, so
+`next build` and `docker build` need no secrets. Because ACA rejects an empty
+secret value, the `admin-password-hash` secret is created only once a non-empty
+hash is supplied.
+
+There is no OAuth provider. `src/auth.ts` uses a single Credentials provider
+against this one local account.
+
+Note the app's env and secrets are Terraform-managed: `ignore_changes` on the
+Container App covers only the image, so any value set by hand in the portal is
+reverted on the next `infra` apply. Set them as GitHub secrets, not in the
+portal.
 
 ### Migrations
 

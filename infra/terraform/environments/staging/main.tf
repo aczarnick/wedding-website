@@ -34,6 +34,6 @@ module "stack" {
   sql_admin_group_object_id      = var.sql_admin_group_object_id
   tenant_id                      = var.tenant_id
   db_auto_pause_delay_in_minutes = 60
-  google_client_id               = var.google_client_id
-  google_client_secret           = var.google_client_secret
+  admin_email                    = var.admin_email
+  admin_password_hash            = var.admin_password_hash
 }

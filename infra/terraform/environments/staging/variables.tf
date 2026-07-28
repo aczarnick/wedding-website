@@ -78,15 +78,16 @@ variable "tenant_id" {
   description = "Entra tenant ID."
 }
 
-variable "google_client_id" {
+variable "admin_email" {
   type        = string
-  description = "Google OAuth client ID for Auth.js. Empty until issue #63."
+  description = "Admin address for the console; doubles as the authorization allowlist."
   default     = ""
+  sensitive   = true
 }
 
-variable "google_client_secret" {
+variable "admin_password_hash" {
   type        = string
-  description = "Google OAuth client secret for Auth.js. Empty until issue #63."
+  description = "scrypt hash of the admin password, from `npm run auth:hash`."
   default     = ""
   sensitive   = true
 }

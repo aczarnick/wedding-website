@@ -111,15 +111,16 @@ variable "db_auto_pause_delay_in_minutes" {
   description = "Serverless auto-pause delay. 60 for staging (pause when idle); -1 for production (stay warm)."
 }
 
-variable "google_client_id" {
+variable "admin_email" {
   type        = string
-  description = "Google OAuth client ID for Auth.js. Empty until issue #63 supplies it."
+  description = "Admin address for the console. Doubles as the authorization allowlist (comma-separated). Empty denies everyone."
   default     = ""
+  sensitive   = true
 }
 
-variable "google_client_secret" {
+variable "admin_password_hash" {
   type        = string
-  description = "Google OAuth client secret for Auth.js. Empty until issue #63 supplies it."
+  description = "scrypt hash of the admin password, from `npm run auth:hash`. Never the password itself."
   default     = ""
   sensitive   = true
 }

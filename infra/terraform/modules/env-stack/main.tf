@@ -32,7 +32,7 @@ module "app" {
   max_replicas                 = var.max_replicas
   allowed_ip_ranges            = var.allowed_ip_ranges
   additional_identity_ids      = [azurerm_user_assigned_identity.app.id]
-  extra_env                    = [{ name = "DATABASE_URL", value = local.database_url }]
+  extra_env                    = local.app_env
   secrets                      = local.app_secrets
   secret_env                   = local.app_secret_env
   tags                         = var.tags
@@ -69,18 +69,25 @@ resource "random_id" "auth_secret" {
 locals {
   database_url = "sqlserver://${module.database.server_fqdn}:1433;database=${module.database.database_name};authentication=ActiveDirectoryManagedIdentity;clientId=${azurerm_user_assigned_identity.app.client_id};encrypt=true"
 
-  # ACA rejects empty secret values, so OAuth secrets appear only once #63
-  # supplies real values. AUTH_SECRET is always present (generated).
+  # ACA rejects empty secret values, so the admin password hash appears only
+  # once it is supplied. AUTH_SECRET is always present (generated).
   app_secrets = concat(
     [{ name = "auth-secret", value = random_id.auth_secret.b64_std }],
-    var.google_client_id == "" ? [] : [{ name = "google-client-id", value = var.google_client_id }],
-    var.google_client_secret == "" ? [] : [{ name = "google-client-secret", value = var.google_client_secret }],
+    var.admin_password_hash == "" ? [] : [{ name = "admin-password-hash", value = var.admin_password_hash }],
   )
 
   app_secret_env = concat(
     [{ name = "AUTH_SECRET", secret_name = "auth-secret" }],
-    var.google_client_id == "" ? [] : [{ name = "AUTH_GOOGLE_ID", secret_name = "google-client-id" }],
-    var.google_client_secret == "" ? [] : [{ name = "AUTH_GOOGLE_SECRET", secret_name = "google-client-secret" }],
+    var.admin_password_hash == "" ? [] : [{ name = "ADMIN_PASSWORD_HASH", secret_name = "admin-password-hash" }],
+  )
+
+  # ADMIN_EMAIL is the allowlist, not a credential, so it stays a plain env var
+  # — readable in the portal, where an ACA secret would only obscure the one
+  # value an operator needs to confirm. It is still a sensitive TF variable so
+  # GitHub masks it in pipeline logs, matching how alert_emails is handled.
+  app_env = concat(
+    [{ name = "DATABASE_URL", value = local.database_url }],
+    var.admin_email == "" ? [] : [{ name = "ADMIN_EMAIL", value = var.admin_email }],
   )
 }
 
