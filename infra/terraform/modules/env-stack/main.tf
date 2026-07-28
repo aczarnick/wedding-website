@@ -67,7 +67,18 @@ resource "random_id" "auth_secret" {
 }
 
 locals {
-  database_url = "sqlserver://${module.database.server_fqdn}:1433;database=${module.database.database_name};authentication=ActiveDirectoryManagedIdentity;clientId=${azurerm_user_assigned_identity.app.client_id};encrypt=true"
+  # `DefaultAzureCredential`, not `ActiveDirectoryManagedIdentity`: the latter is
+  # the App Service flavour of managed identity, and @prisma/adapter-mssql
+  # rejects it outright unless the connection string also carries `msiEndpoint`
+  # and `msiSecret` — variables Container Apps does not set (it exposes identity
+  # via IDENTITY_ENDPOINT/IDENTITY_HEADER). The adapter threw before opening a
+  # socket, so every database request failed with
+  # "ActiveDirectoryManagedIdentity requires msiEndpoint, msiSecret".
+  #
+  # The adapter forwards no options for this mode, so the user-assigned identity
+  # cannot be named in the connection string; DefaultAzureCredential reads it
+  # from AZURE_CLIENT_ID instead (see app_env below).
+  database_url = "sqlserver://${module.database.server_fqdn}:1433;database=${module.database.database_name};authentication=DefaultAzureCredential;encrypt=true"
 
   # ACA rejects empty secret values, so the admin password hash appears only
   # once it is supplied. AUTH_SECRET is always present (generated).
@@ -81,12 +92,19 @@ locals {
     var.admin_password_hash == "" ? [] : [{ name = "ADMIN_PASSWORD_HASH", secret_name = "admin-password-hash" }],
   )
 
+  # AZURE_CLIENT_ID selects which identity DefaultAzureCredential presents to
+  # SQL. The app carries a user-assigned identity, so without it the credential
+  # chain has no way to know which one to use.
+  #
   # ADMIN_EMAIL is the allowlist, not a credential, so it stays a plain env var
   # — readable in the portal, where an ACA secret would only obscure the one
   # value an operator needs to confirm. It is still a sensitive TF variable so
   # GitHub masks it in pipeline logs, matching how alert_emails is handled.
   app_env = concat(
-    [{ name = "DATABASE_URL", value = local.database_url }],
+    [
+      { name = "DATABASE_URL", value = local.database_url },
+      { name = "AZURE_CLIENT_ID", value = azurerm_user_assigned_identity.app.client_id },
+    ],
     var.admin_email == "" ? [] : [{ name = "ADMIN_EMAIL", value = var.admin_email }],
   )
 }
