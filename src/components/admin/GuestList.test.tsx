@@ -175,4 +175,16 @@ describe('GuestList', () => {
     expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument();
     expect(onChanged).not.toHaveBeenCalled();
   });
+
+  it('shows the session notice, not the raw message, when an edit 401s', async () => {
+    vi.mocked(updateGuest).mockRejectedValue(new ApiError(401, 'unauthorized', 'Unauthorized'));
+    const { onChanged } = setup([guest({})]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save guest' }));
+
+    expect(await screen.findByText(/session has expired/i)).toBeInTheDocument();
+    expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument();
+    expect(onChanged).not.toHaveBeenCalled();
+  });
 });

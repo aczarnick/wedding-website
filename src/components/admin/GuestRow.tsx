@@ -37,10 +37,11 @@ export const GuestRow: React.FC<GuestRowProps> = ({ guest, onChanged }) => {
           initialGuest={guest}
           submitLabel='Save guest'
           isSaving={isSaving}
-          errorMessage={errorMessage}
+          errorMessage={sessionExpired ? null : errorMessage}
           onSubmit={save}
           onCancel={() => setIsEditing(false)}
         />
+        {sessionExpired && <SessionExpiredNotice className='mt-3' />}
       </li>
     );
   }
