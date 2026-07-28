@@ -6,11 +6,13 @@ export interface AdminNavLink {
 }
 
 /**
- * Drives the admin console navigation. Issue #69 (party/guest management)
- * appends its routes here.
+ * Drives the admin console navigation, ordered the way the console is worked:
+ * the overview, then the guest list and the queue it feeds, then the bulk data
+ * tools, the change log, and the settings behind them.
  */
 export const ADMIN_NAV_LINKS: readonly AdminNavLink[] = [
   { label: 'Dashboard', href: '/admin' },
+  { label: 'Parties', href: '/admin/parties' },
   { label: 'Data', href: '/admin/data' },
   { label: 'Changes', href: '/admin/changes' },
   { label: 'Settings', href: '/admin/settings' },
