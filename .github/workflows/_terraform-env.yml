@@ -51,6 +51,10 @@ jobs:
       TF_VAR_sql_admin_group_object_id: ${{ vars.SQL_AAD_ADMIN_GROUP_OBJECT_ID }}
       TF_VAR_sql_admin_group_name: ${{ vars.SQL_AAD_ADMIN_GROUP_NAME }}
       TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+      # SQL-auth server admin, used only by the deploy workflow's migrate job —
+      # Prisma's migration engine cannot present an Entra token. Same secret is
+      # read there, so the two never drift.
+      TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
       # Admin console sign-in. ADMIN_PASSWORD_HASH is the scrypt hash from
       # `npm run auth:hash`, never the password. Both are secrets so GitHub
       # masks them in logs; until they are set, the console denies everyone.

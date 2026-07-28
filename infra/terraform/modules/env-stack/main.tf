@@ -56,6 +56,8 @@ module "database" {
   resource_group_name         = data.azurerm_resource_group.env.name
   aad_admin_login             = var.sql_admin_group_name
   aad_admin_object_id         = var.sql_admin_group_object_id
+  sql_admin_login             = var.sql_admin_login
+  sql_admin_password          = var.sql_admin_password
   tenant_id                   = var.tenant_id
   auto_pause_delay_in_minutes = var.db_auto_pause_delay_in_minutes
   tags                        = var.tags

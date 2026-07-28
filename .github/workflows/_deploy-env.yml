@@ -25,6 +25,10 @@ on:
         required: false
         type: string
         default: ""
+    secrets:
+      sql_admin_password:
+        description: SQL-auth server admin password, used only to run migrations. Required when ENABLE_DB_MIGRATIONS is true.
+        required: false
 
 permissions:
   contents: read
@@ -68,16 +72,25 @@ jobs:
         run: npm ci
 
       # Runs migrations against this env's DB before the new image goes live, so
-      # schema never lags the code. Passwordless: az is logged in as the AAD admin
-      # (the deploy SP is a member of czw-sql-admins), so azure-active-directory-
-      # default / DefaultAzureCredential resolves via the CLI session.
+      # schema never lags the code.
+      #
+      # Two different auth paths on purpose. Granting the app identity uses Node's
+      # mssql driver, which resolves the runner's `az login` session — passwordless.
+      # Migrations cannot: `prisma migrate deploy` runs a Rust engine whose SQL
+      # Server driver has no `authentication`/`accesstoken` parameter, so it can
+      # only present a username and password. Hence the SQL admin credential.
       - name: Run database migrations
         if: ${{ vars.ENABLE_DB_MIGRATIONS == 'true' }}
         env:
           NODE_ENV: production
           SQL_DATABASE: rsvp
+          SQL_ADMIN_PASSWORD: ${{ secrets.sql_admin_password }}
         run: |
           set -euo pipefail
+          if [ -z "$SQL_ADMIN_PASSWORD" ]; then
+            echo "::error::SQL_ADMIN_PASSWORD secret is empty — migrations cannot authenticate. See docs/deployment/README.md."
+            exit 1
+          fi
           ENV_SUFFIX="${{ inputs.resource_group }}"; ENV_SUFFIX="${ENV_SUFFIX#rg-czw-}"
           SERVER="sql-czw-${ENV_SUFFIX}"
           RG="${{ inputs.resource_group }}"
@@ -92,7 +105,12 @@ jobs:
 
           # Idempotently grant the app's managed identity DB access, then migrate.
           node scripts/ensure-db-user.mjs "id-czw-app-${ENV_SUFFIX}"
-          export DATABASE_URL="sqlserver://${SQL_SERVER}:1433;database=rsvp;authentication=DefaultAzureCredential;encrypt=true"
+
+          # Read the admin login rather than hardcoding it: it is the login Azure
+          # generated when the server was created AAD-only, and it differs per
+          # environment. Terraform cannot rename it without destroying the server.
+          SQL_ADMIN_LOGIN=$(az sql server show -g "$RG" -n "$SERVER" --query administratorLogin -o tsv)
+          export DATABASE_URL="sqlserver://${SQL_SERVER}:1433;database=rsvp;user=${SQL_ADMIN_LOGIN};password=${SQL_ADMIN_PASSWORD};encrypt=true"
           npm run --silent db:migrate:deploy
 
       - name: Deploy image

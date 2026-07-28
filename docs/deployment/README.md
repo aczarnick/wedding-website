@@ -225,13 +225,18 @@ The RSVP feature uses an **Azure SQL logical server + one serverless database
 (`rsvp`) per environment**, provisioned by the `sql-database` module inside
 `env-stack`. No new compute: the existing Container App reaches it.
 
-**Passwordless by design.** The server is **AAD-only**
-(`azuread_authentication_only = true`) — no SQL login/password exists anywhere.
-The app connects with its per-env user-assigned identity
-(`id-czw-app-<env>`) via `authentication=ActiveDirectoryManagedIdentity`; there
-is no secret in state or in Container App config. Because no password login
-exists, the public endpoint is not anonymously usable — every connection needs a
-valid Entra token from an authorised principal.
+**Passwordless for the app.** It connects with its per-env user-assigned
+identity (`id-czw-app-<env>`) via `authentication=DefaultAzureCredential`, with
+`AZURE_CLIENT_ID` naming which identity to present. No database secret exists in
+Terraform state or in Container App config.
+
+The server itself is **not** AAD-only. SQL authentication stays enabled for a
+single consumer — the CI migrate job, whose engine cannot present an Entra token
+(see [Why migrations use a password](#why-migrations-use-a-password-when-nothing-else-does)).
+That means the public endpoint *is* reachable by password, so the firewall
+matters: it allows Azure services plus a runner IP opened transiently per
+migrate job, and the credential lives only in the `SQL_ADMIN_PASSWORD` GitHub
+secret.
 
 **Cost:** staging auto-pauses after 60 min idle (~$5/mo storage floor);
 production runs warm (auto-pause disabled, min 0.5 vCore) to avoid a first-query
@@ -320,6 +325,51 @@ the image, so schema never lags the code. The full path is wired
 read/write; `db:migrate:deploy` applies migrations), but it is **gated on the
 `ENABLE_DB_MIGRATIONS` repo variable** and off by default — a deploy with it
 unset is pure `az` CLI, exactly as before.
+
+#### Why migrations use a password when nothing else does
+
+`prisma migrate deploy` runs the **Rust** schema engine, not the JS driver
+adapter the app uses. That engine's SQL Server connection string accepts only
+`uid` / `user id` / `pwd` / `integratedsecurity` — there is no `authentication`
+or `accesstoken` parameter, and `prisma.config.ts` has no `adapter` option on
+Prisma 7. A managed-identity URL is therefore parsed with an empty user and
+fails with:
+
+```
+P1000: Authentication failed against database server,
+the provided database credentials for `` are not valid.
+```
+
+So the server keeps SQL authentication enabled alongside Entra. Azure's AAD-only
+switch disables SQL auth for *every* principal including contained users, so
+there is no way to scope this to a migrations-only login — the server admin
+credential is the whole cost. The **app** is unaffected: it still connects
+passwordlessly as `id-czw-app-<env>` through the driver adapter, and never sees
+this password.
+
+The login name is whatever Azure generated when the server was created AAD-only
+(`CloudSA…`, different per environment). It is **not** renamed to something
+tidier: `administrator_login` is ForceNew, so changing it plans as
+`forces replacement` and would destroy the server and its database. Terraform
+leaves it null and the migrate job reads it with `az sql server show`.
+
+**Enabling it takes two applies.** The provider rejects a password while prior
+state still says `azuread_authentication_only = true`, so the flip has to land
+first:
+
+1. Merge — `infra` applies the flip. `SQL_ADMIN_PASSWORD` is still unset, so
+   Terraform leaves the password unmanaged. The plan is an in-place update.
+2. Set the secret, then re-run the `infra` workflow manually:
+
+   ```bash
+   gh secret set SQL_ADMIN_PASSWORD --body "$(openssl rand -base64 32 | tr -d '=')"
+   gh workflow run infra.yml
+   ```
+
+Stripping `=` keeps the value safe to interpolate into a `;`-delimited
+connection string while still meeting Azure's complexity rules. Rotating it later
+is a `gh secret set` plus one `infra` apply — the two-step dance is only needed
+for the initial flip.
 
 **Turning migrations on** (once, after the first `staging` apply creates the
 server, and after the Directory Readers grant above — without it the job fails

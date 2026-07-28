@@ -101,6 +101,19 @@ variable "sql_admin_group_object_id" {
   description = "Object ID of the SQL admin Entra group."
 }
 
+variable "sql_admin_login" {
+  type        = string
+  description = "SQL server admin login. ForceNew — null preserves the Azure-generated login on existing servers; set only for a new environment."
+  default     = null
+}
+
+variable "sql_admin_password" {
+  type        = string
+  sensitive   = true
+  description = "Password for the SQL admin login, from the SQL_ADMIN_PASSWORD GitHub secret. Empty leaves it unmanaged."
+  default     = ""
+}
+
 variable "tenant_id" {
   type        = string
   description = "Entra tenant ID."
