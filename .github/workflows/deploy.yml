@@ -71,6 +71,8 @@ jobs:
       image: ${{ github.event.inputs.image || needs.build.outputs.image }}
       environment_name: ""
       smoke_host: ${{ vars.STAGING_SMOKE_HOST }}
+    secrets:
+      sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
 
   production:
     needs: [build, staging]
@@ -82,3 +84,5 @@ jobs:
       image: ${{ github.event.inputs.image || needs.build.outputs.image }}
       environment_name: production
       smoke_host: ${{ vars.PRODUCTION_SMOKE_HOST }}
+    secrets:
+      sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}

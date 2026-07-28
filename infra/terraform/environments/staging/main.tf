@@ -32,6 +32,8 @@ module "stack" {
 
   sql_admin_group_name           = var.sql_admin_group_name
   sql_admin_group_object_id      = var.sql_admin_group_object_id
+  sql_admin_login                = var.sql_admin_login
+  sql_admin_password             = var.sql_admin_password
   tenant_id                      = var.tenant_id
   db_auto_pause_delay_in_minutes = 60
   admin_email                    = var.admin_email

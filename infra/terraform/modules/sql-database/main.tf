@@ -1,6 +1,25 @@
-# AAD-only server: no SQL login/password exists, so a public endpoint is not
-# anonymously usable — every connection needs a valid Entra token from an
-# authorized principal.
+# Entra auth is how the app and CI normally reach this server, but SQL
+# authentication is left enabled for one reason: Prisma's migration engine is a
+# Rust binary whose SQL Server driver accepts only `uid`/`pwd` — it has no
+# `authentication` or `accesstoken` connection-string parameter, so `prisma
+# migrate deploy` cannot present a managed-identity token. Driver adapters,
+# which the app uses at runtime, are not available to the CLI on Prisma 7.
+#
+# Azure's AAD-only switch disables SQL auth for every principal including
+# contained users, so there is no way to scope this to a migrations-only login;
+# the server admin credential is the whole cost. It is held solely as a GitHub
+# secret and used solely by the migrate job — the app never sees it.
+#
+# `administrator_login` is ForceNew: the existing servers carry Azure-generated
+# `CloudSA*` logins, and naming one of our own choosing plans as
+# "forces replacement" — destroying the server and its database. So it stays
+# null here, which preserves whatever Azure generated. A brand-new environment
+# must set it, because Azure requires an admin login when SQL auth is enabled.
+#
+# The password is guarded on empty because the provider refuses to set one while
+# prior state still says `azuread_authentication_only = true`. The flip must
+# therefore land in its own apply: apply once with SQL_ADMIN_PASSWORD unset,
+# then set the secret and apply again. See docs/deployment/README.md.
 resource "azurerm_mssql_server" "this" {
   name                          = "sql-czw-${var.environment}"
   resource_group_name           = var.resource_group_name
@@ -8,12 +27,14 @@ resource "azurerm_mssql_server" "this" {
   version                       = "12.0"
   minimum_tls_version           = "1.2"
   public_network_access_enabled = true
+  administrator_login           = var.sql_admin_login
+  administrator_login_password  = var.sql_admin_password == "" ? null : var.sql_admin_password
 
   azuread_administrator {
     login_username              = var.aad_admin_login
     object_id                   = var.aad_admin_object_id
     tenant_id                   = var.tenant_id
-    azuread_authentication_only = true
+    azuread_authentication_only = false
   }
 
   # `CREATE USER [name] FROM EXTERNAL PROVIDER` makes the *server* call Microsoft
