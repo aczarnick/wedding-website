@@ -1803,7 +1803,7 @@ describe('NewPartyForm', () => {
   });
 
   it('sends the entered add-guest cap, including zero', async () => {
-    const { user } = setup();
+    setup();
 
     fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Aunt Marge' } });
     fireEvent.change(screen.getByLabelText('Add-guest cap'), { target: { value: '0' } });
@@ -1815,7 +1815,7 @@ describe('NewPartyForm', () => {
   });
 
   it('omits a blank cap so the server default applies', async () => {
-    const { user } = setup();
+    setup();
 
     fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Aunt Marge' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
@@ -1828,7 +1828,7 @@ describe('NewPartyForm', () => {
   });
 
   it('allows a party with no guests yet', async () => {
-    const { user } = setup();
+    setup();
 
     fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Aunt Marge' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
@@ -1839,7 +1839,7 @@ describe('NewPartyForm', () => {
   });
 
   it('refuses to submit without a display name', () => {
-    const { user } = setup();
+    setup();
 
     fireEvent.click(screen.getByRole('button', { name: 'Create party' }));
 
@@ -1848,7 +1848,7 @@ describe('NewPartyForm', () => {
   });
 
   it('refuses to submit a half-filled guest row rather than dropping it', () => {
-    const { user } = setup();
+    setup();
 
     fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'The Smith Family' } });
     fireEvent.change(screen.getByLabelText('Guest 1 first name'), { target: { value: 'John' } });
@@ -1861,7 +1861,7 @@ describe('NewPartyForm', () => {
   });
 
   it('drops a removed guest row from the payload', async () => {
-    const { user } = setup();
+    setup();
 
     fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'The Smith Family' } });
     fireEvent.change(screen.getByLabelText('Guest 1 first name'), { target: { value: 'John' } });
@@ -2258,7 +2258,7 @@ describe('PartyEditForm', () => {
   });
 
   it('clears an emptied message to null', async () => {
-    const { user } = setup();
+    setup();
 
     fireEvent.change(screen.getByLabelText('Message'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save party' }));
@@ -2282,7 +2282,7 @@ describe('PartyEditForm', () => {
   });
 
   it('pluralizes the cascade warning', () => {
-    const { user } = setup({ ...PARTY, guests: [...PARTY.guests, ...PARTY.guests] });
+    setup({ ...PARTY, guests: [...PARTY.guests, ...PARTY.guests] });
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete party' }));
 
