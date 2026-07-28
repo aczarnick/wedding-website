@@ -6,7 +6,8 @@ import { PartyLookup } from './PartyLookup';
 import { PartyPicker } from './PartyPicker';
 import { RsvpClosed } from './RsvpClosed';
 import { RsvpConfirmation } from './RsvpConfirmation';
-import { RsvpApiError, fetchParty, searchParties, submitRsvp } from '@/lib/rsvp/client';
+import { fetchParty, searchParties, submitRsvp } from '@/lib/rsvp/client';
+import { ApiError } from '@/lib/http/apiClient';
 import type { PartyDetail, PartySearchResult, SubmitRsvpBody } from '@/lib/rsvp/types';
 
 type WizardState =
@@ -32,12 +33,12 @@ const PARTY_MISSING_MESSAGE =
   'That invitation is no longer available. Please contact the bride or groom.';
 const UNEXPECTED_MESSAGE = 'Something went wrong. Please try again.';
 
-const asApiError = (error: unknown): RsvpApiError =>
-  error instanceof RsvpApiError
+const asApiError = (error: unknown): ApiError =>
+  error instanceof ApiError
     ? error
-    : new RsvpApiError(0, 'unknown_error', UNEXPECTED_MESSAGE);
+    : new ApiError(0, 'unknown_error', UNEXPECTED_MESSAGE);
 
-const closedState = (error: RsvpApiError): WizardState => ({
+const closedState = (error: ApiError): WizardState => ({
   step: 'closed',
   deadline: typeof error.details.deadline === 'string' ? error.details.deadline : null,
 });
@@ -53,7 +54,7 @@ const lookupWithError = (message: string): WizardState => ({
  * they are replaced with the generic message. Everything else (validation
  * errors like `invalid_request`) is genuinely useful and passes through.
  */
-const userMessage = (error: RsvpApiError): string =>
+const userMessage = (error: ApiError): string =>
   error.status >= 500 ? UNEXPECTED_MESSAGE : error.message;
 
 /**
@@ -62,8 +63,8 @@ const userMessage = (error: RsvpApiError): string =>
  * caller-specific `fallback` for everything else.
  */
 const mapError = (
-  error: RsvpApiError,
-  fallback: (error: RsvpApiError) => WizardState,
+  error: ApiError,
+  fallback: (error: ApiError) => WizardState,
 ): WizardState => {
   if (error.code === 'rsvp_closed') {
     return closedState(error);
@@ -133,7 +134,7 @@ export const RsvpWizard: React.FC = () => {
     }
   };
 
-  const reloadAfterConflict = async (party: PartyDetail, formKey: number, conflict: RsvpApiError) => {
+  const reloadAfterConflict = async (party: PartyDetail, formKey: number, conflict: ApiError) => {
     try {
       const refreshed = await fetchParty(party.id);
       setState({

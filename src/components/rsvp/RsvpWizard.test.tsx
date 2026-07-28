@@ -1,18 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { RsvpWizard } from './RsvpWizard';
-import { RsvpApiError, fetchParty, searchParties, submitRsvp } from '@/lib/rsvp/client';
+import { fetchParty, searchParties, submitRsvp } from '@/lib/rsvp/client';
+import { ApiError } from '@/lib/http/apiClient';
 import type { PartyDetail } from '@/lib/rsvp/types';
 
-vi.mock('@/lib/rsvp/client', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/rsvp/client')>('@/lib/rsvp/client');
-  return {
-    RsvpApiError: actual.RsvpApiError,
-    searchParties: vi.fn(),
-    fetchParty: vi.fn(),
-    submitRsvp: vi.fn(),
-  };
-});
+vi.mock('@/lib/rsvp/client', () => ({
+  searchParties: vi.fn(),
+  fetchParty: vi.fn(),
+  submitRsvp: vi.fn(),
+}));
 
 const searchPartiesMock = vi.mocked(searchParties);
 const fetchPartyMock = vi.mocked(fetchParty);
@@ -92,7 +89,7 @@ describe('RsvpWizard', () => {
 
   it('surfaces a search validation error inline', async () => {
     searchPartiesMock.mockRejectedValue(
-      new RsvpApiError(400, 'invalid_request', 'Enter a first and last name'),
+      new ApiError(400, 'invalid_request', 'Enter a first and last name'),
     );
     render(<RsvpWizard />);
 
@@ -103,7 +100,7 @@ describe('RsvpWizard', () => {
 
   it('goes to the closed page when the search reports the deadline has passed', async () => {
     searchPartiesMock.mockRejectedValue(
-      new RsvpApiError(403, 'rsvp_closed', 'RSVPs are closed.', {
+      new ApiError(403, 'rsvp_closed', 'RSVPs are closed.', {
         deadline: '2026-09-10T00:00:00.000Z',
       }),
     );
@@ -120,7 +117,7 @@ describe('RsvpWizard', () => {
       { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
     ]);
     fetchPartyMock.mockRejectedValue(
-      new RsvpApiError(403, 'rsvp_closed', 'RSVPs are closed.', {
+      new ApiError(403, 'rsvp_closed', 'RSVPs are closed.', {
         deadline: '2026-09-10T00:00:00.000Z',
       }),
     );
@@ -138,7 +135,7 @@ describe('RsvpWizard', () => {
     ]);
     fetchPartyMock.mockResolvedValue(PARTY);
     submitRsvpMock.mockRejectedValue(
-      new RsvpApiError(403, 'rsvp_closed', 'RSVPs are closed.', {
+      new ApiError(403, 'rsvp_closed', 'RSVPs are closed.', {
         deadline: '2026-09-10T00:00:00.000Z',
       }),
     );
@@ -194,7 +191,7 @@ describe('RsvpWizard', () => {
     };
     fetchPartyMock.mockResolvedValueOnce(PARTY).mockResolvedValueOnce(refreshed);
     submitRsvpMock.mockRejectedValue(
-      new RsvpApiError(409, 'party_changed', 'Your party changed.'),
+      new ApiError(409, 'party_changed', 'Your party changed.'),
     );
     render(<RsvpWizard />);
 
@@ -214,7 +211,7 @@ describe('RsvpWizard', () => {
     ]);
     fetchPartyMock.mockResolvedValueOnce(PARTY).mockResolvedValueOnce(PARTY);
     submitRsvpMock.mockRejectedValue(
-      new RsvpApiError(409, 'add_guest_cap_exceeded', 'This party can add at most 2 guests.', {
+      new ApiError(409, 'add_guest_cap_exceeded', 'This party can add at most 2 guests.', {
         cap: 2,
         remaining: 0,
       }),
@@ -238,9 +235,9 @@ describe('RsvpWizard', () => {
     ]);
     fetchPartyMock
       .mockResolvedValueOnce(PARTY)
-      .mockRejectedValueOnce(new RsvpApiError(500, 'server_error', 'Something broke over there.'));
+      .mockRejectedValueOnce(new ApiError(500, 'server_error', 'Something broke over there.'));
     submitRsvpMock.mockRejectedValue(
-      new RsvpApiError(409, 'party_changed', 'Your party changed.'),
+      new ApiError(409, 'party_changed', 'Your party changed.'),
     );
     render(<RsvpWizard />);
 
@@ -259,7 +256,7 @@ describe('RsvpWizard', () => {
       { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
     ]);
     fetchPartyMock.mockRejectedValue(
-      new RsvpApiError(404, 'party_not_found', 'Party not found'),
+      new ApiError(404, 'party_not_found', 'Party not found'),
     );
     render(<RsvpWizard />);
 
@@ -275,7 +272,7 @@ describe('RsvpWizard', () => {
     ]);
     fetchPartyMock.mockResolvedValue(PARTY);
     submitRsvpMock.mockRejectedValue(
-      new RsvpApiError(404, 'party_not_found', 'Party not found'),
+      new ApiError(404, 'party_not_found', 'Party not found'),
     );
     render(<RsvpWizard />);
 
@@ -293,7 +290,7 @@ describe('RsvpWizard', () => {
       { id: PARTY.id, displayName: PARTY.displayName, guestFirstNames: ['John'] },
     ]);
     fetchPartyMock.mockResolvedValue(PARTY);
-    submitRsvpMock.mockRejectedValue(new RsvpApiError(0, 'network_error', 'We could not reach the server.'));
+    submitRsvpMock.mockRejectedValue(new ApiError(0, 'network_error', 'We could not reach the server.'));
     render(<RsvpWizard />);
 
     search();
