@@ -249,6 +249,37 @@ floor" — consistent with production's warm `min_replicas = 1` policy.
   the RG-Contributor infra identity needs no directory permission). These must
   exist **before** the first `infra` apply or the plan fails on an unset var.
 
+### Directory Readers for the SQL server identity (manual, once per env)
+
+The migrate job runs `CREATE USER [id-czw-app-<env>] FROM EXTERNAL PROVIDER`,
+which makes the **server** call Microsoft Graph to resolve that name. Terraform
+gives the server a system-assigned identity for the call, but the identity also
+needs the **Directory Readers** role — a tenant-level grant that requires Global
+Administrator, so the deploy service principal cannot make it and Terraform does
+not own it. Without it the migrate job fails with:
+
+```
+Principal 'id-czw-app-staging' could not be resolved.
+Server identity is not configured.
+```
+
+Run once per environment, **after** the `infra` apply that creates the server:
+
+```bash
+PRINCIPAL_ID=$(az sql server show -g rg-czw-staging -n sql-czw-staging \
+  --query identity.principalId -o tsv)
+
+az rest --method POST \
+  --url https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments \
+  --body "{\"principalId\":\"$PRINCIPAL_ID\",
+           \"roleDefinitionId\":\"88d8e3e3-8f55-4a1e-953a-9b9898b8876b\",
+           \"directoryScopeId\":\"/\"}"
+```
+
+`88d8e3e3-…` is the fixed template id of Directory Readers. Repeat with
+`rg-czw-production` / `sql-czw-production`. Re-running returns a conflict, which
+is harmless.
+
 ### Admin console sign-in
 
 Terraform generates `AUTH_SECRET` (never hand-managed) and wires two more values
@@ -291,7 +322,8 @@ read/write; `db:migrate:deploy` applies migrations), but it is **gated on the
 unset is pure `az` CLI, exactly as before.
 
 **Turning migrations on** (once, after the first `staging` apply creates the
-server):
+server, and after the Directory Readers grant above — without it the job fails
+before any migration runs):
 
 ```bash
 gh variable set ENABLE_DB_MIGRATIONS --body true
