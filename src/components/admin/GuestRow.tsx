@@ -83,7 +83,11 @@ export const GuestRow: React.FC<GuestRowProps> = ({ guest, onChanged }) => {
       </span>
 
       {errorMessage && (
-        <p role='alert' className='w-full text-sm text-sage-800'>
+        <p
+          role='alert'
+          data-testid={`guest-row-error-${guest.id}`}
+          className='w-full text-sm text-sage-800'
+        >
           {errorMessage}
         </p>
       )}
