@@ -1501,6 +1501,24 @@ describe('GuestList', () => {
     );
     expect(onChanged).not.toHaveBeenCalled();
   });
+
+  // GuestRow owns its own error paragraph, on a different code path from the
+  // add-guest form above. Without this test a failed delete renders nothing.
+  it('shows the row’s own error when a delete fails, and does not refresh', async () => {
+    vi.mocked(deleteGuest).mockRejectedValue(
+      new ApiError(404, 'guest_not_found', 'Guest not found'),
+    );
+    const { onChanged } = setup([guest({})]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('guest-row-error-guest-1')).toHaveTextContent('Guest not found'),
+    );
+    expect(onChanged).not.toHaveBeenCalled();
+    expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+  });
 });
 ```
 
@@ -1599,7 +1617,11 @@ export const GuestRow: React.FC<GuestRowProps> = ({ guest, onChanged }) => {
       </span>
 
       {errorMessage && (
-        <p role='alert' className='w-full text-sm text-sage-800'>
+        <p
+          role='alert'
+          data-testid={`guest-row-error-${guest.id}`}
+          className='w-full text-sm text-sage-800'
+        >
           {errorMessage}
         </p>
       )}
