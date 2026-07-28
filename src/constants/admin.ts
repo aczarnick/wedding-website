@@ -13,6 +13,7 @@ export interface AdminNavLink {
 export const ADMIN_NAV_LINKS: readonly AdminNavLink[] = [
   { label: 'Dashboard', href: '/admin' },
   { label: 'Parties', href: '/admin/parties' },
+  { label: 'Moderation', href: '/admin/moderation' },
   { label: 'Data', href: '/admin/data' },
   { label: 'Changes', href: '/admin/changes' },
   { label: 'Settings', href: '/admin/settings' },
