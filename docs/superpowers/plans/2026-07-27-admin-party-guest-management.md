@@ -2429,6 +2429,7 @@ Expected: PartyEditForm 6 tests pass; full suite green.
 
 **Files:**
 - Create: `src/components/admin/PartyRow.tsx`
+- Create: `src/lib/admin/useLoadableResource.ts`
 - Create: `src/components/admin/PartyManager.tsx`
 - Create: `src/components/admin/PartyManager.test.tsx`
 - Create: `src/app/admin/parties/page.tsx`
@@ -2688,21 +2689,86 @@ export const PartyRow: React.FC<PartyRowProps> = ({
 };
 ```
 
-- [ ] **Step 4: Write PartyManager**
+- [ ] **Step 4: Write the loadable-resource hook**
+
+This screen and the moderation queue (Task 8) share one shape: load a resource on
+mount, show the server's message on failure, offer a retry, and re-load after a
+mutation. That is the read-side mirror of the existing `useAdminMutation`, so it
+lives in one hook rather than being written twice — and the React Compiler lint
+workaround below is then discovered once rather than rediscovered per screen.
+
+Create `src/lib/admin/useLoadableResource.ts`:
+
+```ts
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { ApiError } from '@/lib/http/apiClient';
+
+interface LoadableResource<T> {
+  data: T | null;
+  errorMessage: string | null;
+  reload: () => Promise<void>;
+}
+
+/**
+ * Loads a resource on mount and hands back a `reload` for callers to run after
+ * a mutation. `data` stays `null` until the first successful load, so a caller
+ * can tell "still loading" from "loaded and empty". `load` must be stable — a
+ * module-level function, or one wrapped in `useCallback` — or the mount effect
+ * re-runs on every render.
+ */
+export const useLoadableResource = <T,>(
+  load: () => Promise<T>,
+  fallbackMessage: string,
+): LoadableResource<T> => {
+  const [data, setData] = useState<T | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    setErrorMessage(null);
+
+    try {
+      setData(await load());
+    } catch (error) {
+      setErrorMessage(error instanceof ApiError ? error.message : fallbackMessage);
+    }
+  }, [load, fallbackMessage]);
+
+  useEffect(() => {
+    // Declaring the call in a function *inside* the effect satisfies the React
+    // Compiler's `set-state-in-effect` rule. Calling `reload` by reference from
+    // the effect body trips it and would need a suppression comment.
+    async function runInitialLoad() {
+      await reload();
+    }
+
+    void runInitialLoad();
+  }, [reload]);
+
+  return { data, errorMessage, reload };
+};
+```
+
+Clearing the error at the **start** of `reload` is deliberate: on a retry the
+error text and its button give way to the loading state immediately, so the click
+visibly does something. Clearing it only on success instead leaves the failure
+frozen on screen for the whole round-trip and invites a second click.
+
+- [ ] **Step 5: Write PartyManager**
 
 Create `src/components/admin/PartyManager.tsx`:
 
 ```tsx
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { NewPartyForm } from './NewPartyForm';
 import { PartyRow } from './PartyRow';
 import { fetchParties } from '@/lib/admin/client';
 import { ALL_STATUSES, filterParties } from '@/lib/admin/partyList';
-import type { AdminParty } from '@/lib/admin/projections';
+import { useLoadableResource } from '@/lib/admin/useLoadableResource';
 import { RSVP_STATUS } from '@/lib/enums';
-import { ApiError } from '@/lib/http/apiClient';
 
 const LOAD_ERROR_MESSAGE = 'We could not load the guest list. Please try again.';
 
@@ -2717,41 +2783,30 @@ const CONTROL_CLASSES =
   'mt-1 w-full rounded-md border border-sage-200 bg-white px-3 py-2 text-sm text-sage-800 focus:border-sage-700 focus:outline-none';
 
 export const PartyManager: React.FC = () => {
-  const [parties, setParties] = useState<AdminParty[] | null>(null);
-  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
+  const {
+    data: parties,
+    errorMessage,
+    reload,
+  } = useLoadableResource(fetchParties, LOAD_ERROR_MESSAGE);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<string>(ALL_STATUSES);
   const [expandedPartyId, setExpandedPartyId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoadErrorMessage(null);
-
-    try {
-      setParties(await fetchParties());
-    } catch (error) {
-      setLoadErrorMessage(error instanceof ApiError ? error.message : LOAD_ERROR_MESSAGE);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
   const handleCreated = () => {
     setIsCreating(false);
-    void load();
+    void reload();
   };
 
-  if (loadErrorMessage) {
+  if (errorMessage) {
     return (
       <div>
         <p role='alert' data-testid='party-list-error' className='text-sm text-sage-800'>
-          {loadErrorMessage}
+          {errorMessage}
         </p>
         <button
           type='button'
-          onClick={() => void load()}
+          onClick={() => void reload()}
           className='mt-3 rounded-full border border-sage-300 px-4 py-1.5 text-sm text-sage-700 hover:bg-sage-100'
         >
           Try again
@@ -2838,7 +2893,7 @@ export const PartyManager: React.FC = () => {
             onToggle={() =>
               setExpandedPartyId((current) => (current === party.id ? null : party.id))
             }
-            onChanged={() => void load()}
+            onChanged={() => void reload()}
           />
         ))}
       </ul>
@@ -2847,12 +2902,12 @@ export const PartyManager: React.FC = () => {
 };
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [ ] **Step 6: Run the test to verify it passes**
 
 Run: `npx vitest run src/components/admin/PartyManager.test.tsx`
 Expected: PASS, 9 tests.
 
-- [ ] **Step 6: Add the page and the nav link**
+- [ ] **Step 7: Add the page and the nav link**
 
 Create `src/app/admin/parties/page.tsx`:
 
@@ -2890,7 +2945,7 @@ export const ADMIN_NAV_LINKS: readonly AdminNavLink[] = [
 ];
 ```
 
-- [ ] **Step 7: Run the gate and commit**
+- [ ] **Step 8: Run the gate and commit**
 
 ```bash
 npm test 2>&1 | tail -8 && npm run lint && npm run build 2>&1 | tail -8
@@ -3144,11 +3199,10 @@ Create `src/components/admin/ModerationQueue.tsx`:
 ```tsx
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import { ModerationCard } from './ModerationCard';
 import { fetchFlaggedGuests, fetchParties } from '@/lib/admin/client';
 import type { AdminGuest } from '@/lib/admin/projections';
-import { ApiError } from '@/lib/http/apiClient';
+import { useLoadableResource } from '@/lib/admin/useLoadableResource';
 
 const LOAD_ERROR_MESSAGE = 'We could not load the moderation queue. Please try again.';
 const UNKNOWN_PARTY = 'an unknown party';
@@ -3158,38 +3212,33 @@ interface QueueData {
   partyNames: Record<string, string>;
 }
 
+/**
+ * Declared at module scope so its identity is stable across renders, which is
+ * what `useLoadableResource` requires of its loader. The queue needs both
+ * endpoints: the flagged-guest payload carries only `partyId`, and the question
+ * a moderator is answering is which party added this person.
+ */
+const loadQueue = async (): Promise<QueueData> => {
+  const [flagged, parties] = await Promise.all([fetchFlaggedGuests(), fetchParties()]);
+
+  return {
+    flagged,
+    partyNames: Object.fromEntries(parties.map((party) => [party.id, party.displayName])),
+  };
+};
+
 export const ModerationQueue: React.FC = () => {
-  const [data, setData] = useState<QueueData | null>(null);
-  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
+  const { data, errorMessage, reload } = useLoadableResource(loadQueue, LOAD_ERROR_MESSAGE);
 
-  const load = useCallback(async () => {
-    setLoadErrorMessage(null);
-
-    try {
-      const [flagged, parties] = await Promise.all([fetchFlaggedGuests(), fetchParties()]);
-
-      setData({
-        flagged,
-        partyNames: Object.fromEntries(parties.map((party) => [party.id, party.displayName])),
-      });
-    } catch (error) {
-      setLoadErrorMessage(error instanceof ApiError ? error.message : LOAD_ERROR_MESSAGE);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (loadErrorMessage) {
+  if (errorMessage) {
     return (
       <div>
         <p role='alert' data-testid='moderation-load-error' className='text-sm text-sage-800'>
-          {loadErrorMessage}
+          {errorMessage}
         </p>
         <button
           type='button'
-          onClick={() => void load()}
+          onClick={() => void reload()}
           className='mt-3 rounded-full border border-sage-300 px-4 py-1.5 text-sm text-sage-700 hover:bg-sage-100'
         >
           Try again
@@ -3213,7 +3262,7 @@ export const ModerationQueue: React.FC = () => {
           key={guest.id}
           guest={guest}
           partyName={data.partyNames[guest.partyId] ?? UNKNOWN_PARTY}
-          onResolved={() => void load()}
+          onResolved={() => void reload()}
         />
       ))}
     </ul>
