@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { adminFetch } from '@/lib/admin/apiClient';
+import { requestJson } from '@/lib/http/apiClient';
 import { isSessionExpired, toFailureMessage } from '@/lib/admin/requestError';
 import { AUDIT_ACTION_LABELS } from '@/constants/admin';
 import { AuditEntry } from './AuditEntry';
@@ -53,7 +53,7 @@ export const AuditLogViewer: React.FC = () => {
 
       try {
         const query = buildQuery(action, offset);
-        const response = await adminFetch<AuditLogResponse>(`/api/admin/audit?${query}`);
+        const response = await requestJson<AuditLogResponse>(`/api/admin/audit?${query}`);
         if (cancelled) return;
 
         setEntries(response.entries);

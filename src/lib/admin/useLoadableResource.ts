@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError } from '@/lib/http/apiClient';
+import { isSessionExpired, toFailureMessage } from '@/lib/admin/requestError';
 
 interface LoadableResource<T> {
   data: T | null;
   errorMessage: string | null;
+  sessionExpired: boolean;
   reload: () => Promise<void>;
 }
 
@@ -16,22 +17,22 @@ interface LoadableResource<T> {
  * module-level function, or one wrapped in `useCallback` — or the mount effect
  * re-runs on every render.
  */
-export const useLoadableResource = <T,>(
-  load: () => Promise<T>,
-  fallbackMessage: string,
-): LoadableResource<T> => {
+export const useLoadableResource = <T,>(load: () => Promise<T>): LoadableResource<T> => {
   const [data, setData] = useState<T | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const reload = useCallback(async () => {
     setErrorMessage(null);
+    setSessionExpired(false);
 
     try {
       setData(await load());
     } catch (error) {
-      setErrorMessage(error instanceof ApiError ? error.message : fallbackMessage);
+      setSessionExpired(isSessionExpired(error));
+      setErrorMessage(toFailureMessage(error));
     }
-  }, [load, fallbackMessage]);
+  }, [load]);
 
   useEffect(() => {
     // Declaring the call in a function *inside* the effect satisfies the React
@@ -44,5 +45,5 @@ export const useLoadableResource = <T,>(
     void runInitialLoad();
   }, [reload]);
 
-  return { data, errorMessage, reload };
+  return { data, errorMessage, sessionExpired, reload };
 };

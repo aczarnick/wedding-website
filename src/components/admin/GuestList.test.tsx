@@ -162,4 +162,17 @@ describe('GuestList', () => {
     expect(onChanged).not.toHaveBeenCalled();
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
   });
+
+  it('renders the session-expired notice instead of the raw message when a delete gets a 401', async () => {
+    vi.mocked(deleteGuest).mockRejectedValue(new ApiError(401, 'unauthorized', 'Unauthorized'));
+    const { onChanged } = setup([guest({})]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
+
+    expect(await screen.findByText(/session has expired/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('guest-row-error-guest-1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument();
+    expect(onChanged).not.toHaveBeenCalled();
+  });
 });

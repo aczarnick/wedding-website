@@ -151,4 +151,15 @@ describe('PartyManager', () => {
 
     expect(await screen.findByText('The Smith Family')).toBeInTheDocument();
   });
+
+  it('renders the session-expired notice instead of the raw message on a 401', async () => {
+    vi.mocked(fetchParties).mockRejectedValueOnce(
+      new ApiError(401, 'unauthorized', 'Unauthorized'),
+    );
+    render(<PartyManager />);
+
+    expect(await screen.findByText(/session has expired/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('party-list-error')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument();
+  });
 });

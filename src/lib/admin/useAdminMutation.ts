@@ -1,13 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { ApiError } from '@/lib/http/apiClient';
-
-const UNEXPECTED_MESSAGE = 'Something went wrong. Please try again.';
+import { isSessionExpired, toFailureMessage } from '@/lib/admin/requestError';
 
 interface AdminMutation {
   isSaving: boolean;
   errorMessage: string | null;
+  sessionExpired: boolean;
   run: (action: () => Promise<unknown>, onSuccess: () => void) => Promise<void>;
 }
 
@@ -18,20 +17,23 @@ interface AdminMutation {
 export const useAdminMutation = (): AdminMutation => {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const run = async (action: () => Promise<unknown>, onSuccess: () => void) => {
     setIsSaving(true);
     setErrorMessage(null);
+    setSessionExpired(false);
 
     try {
       await action();
       onSuccess();
     } catch (error) {
-      setErrorMessage(error instanceof ApiError ? error.message : UNEXPECTED_MESSAGE);
+      setSessionExpired(isSessionExpired(error));
+      setErrorMessage(toFailureMessage(error));
     } finally {
       setIsSaving(false);
     }
   };
 
-  return { isSaving, errorMessage, run };
+  return { isSaving, errorMessage, sessionExpired, run };
 };

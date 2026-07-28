@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { adminFetch } from '@/lib/admin/apiClient';
+import { requestJson } from '@/lib/http/apiClient';
 import { isSessionExpired, toFailureMessage } from '@/lib/admin/requestError';
 import { SessionExpiredNotice } from './SessionExpiredNotice';
 import type { AdminSettings } from '@/lib/admin/settings';
@@ -69,7 +69,7 @@ export const SettingsForm: React.FC = () => {
       setLoadSessionExpired(false);
 
       try {
-        const settings = await adminFetch<AdminSettings>('/api/admin/settings');
+        const settings = await requestJson<AdminSettings>('/api/admin/settings');
         if (cancelled) return;
 
         setBaseline(settings);
@@ -127,7 +127,7 @@ export const SettingsForm: React.FC = () => {
     setSaveSucceeded(false);
 
     try {
-      const updated = await adminFetch<AdminSettings>('/api/admin/settings', {
+      const updated = await requestJson<AdminSettings>('/api/admin/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),

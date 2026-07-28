@@ -1,6 +1,7 @@
 'use client';
 
 import { ConfirmButton } from './ConfirmButton';
+import { SessionExpiredNotice } from './SessionExpiredNotice';
 import { moderateGuest } from '@/lib/admin/client';
 import type { AdminGuest } from '@/lib/admin/projections';
 import { useAdminMutation } from '@/lib/admin/useAdminMutation';
@@ -23,7 +24,7 @@ export const ModerationCard: React.FC<ModerationCardProps> = ({
   partyName,
   onResolved,
 }) => {
-  const { isSaving, errorMessage, run } = useAdminMutation();
+  const { isSaving, errorMessage, sessionExpired, run } = useAdminMutation();
 
   return (
     <li className='rounded-xl border border-sage-200 bg-white p-5'>
@@ -37,14 +38,18 @@ export const ModerationCard: React.FC<ModerationCardProps> = ({
         Approving keeps this guest counted against the party&rsquo;s add-guest cap.
       </p>
 
-      {errorMessage && (
-        <p
-          role='alert'
-          data-testid={`moderation-error-${guest.id}`}
-          className='mt-3 text-sm text-sage-800'
-        >
-          {errorMessage}
-        </p>
+      {sessionExpired ? (
+        <SessionExpiredNotice className='mt-3' />
+      ) : (
+        errorMessage && (
+          <p
+            role='alert'
+            data-testid={`moderation-error-${guest.id}`}
+            className='mt-3 text-sm text-sage-800'
+          >
+            {errorMessage}
+          </p>
+        )
       )}
 
       <div className='mt-4 flex flex-wrap items-center gap-3'>

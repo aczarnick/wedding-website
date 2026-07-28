@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { PartyFields, toAddGuestCap, type PartyFieldValues } from './PartyFields';
+import { SessionExpiredNotice } from './SessionExpiredNotice';
 import { createParty, type GuestFields } from '@/lib/admin/client';
 import { useAdminMutation } from '@/lib/admin/useAdminMutation';
 import { RSVP_STATUS } from '@/lib/enums';
@@ -40,7 +41,7 @@ export const NewPartyForm: React.FC<NewPartyFormProps> = ({ onCreated, onCancel 
   const [fields, setFields] = useState<PartyFieldValues>(EMPTY_FIELDS);
   const [rows, setRows] = useState<GuestNameRow[]>([EMPTY_ROW]);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  const { isSaving, errorMessage, run } = useAdminMutation();
+  const { isSaving, errorMessage, sessionExpired, run } = useAdminMutation();
 
   const displayName = fields.displayName.trim();
   const canSubmit = displayName.length > 0 && !isSaving;
@@ -147,10 +148,14 @@ export const NewPartyForm: React.FC<NewPartyFormProps> = ({ onCreated, onCancel 
         </button>
       </fieldset>
 
-      {(validationMessage ?? errorMessage) && (
-        <p role='alert' data-testid='new-party-error' className='mt-4 text-sm text-sage-800'>
-          {validationMessage ?? errorMessage}
-        </p>
+      {sessionExpired ? (
+        <SessionExpiredNotice className='mt-4' />
+      ) : (
+        (validationMessage ?? errorMessage) && (
+          <p role='alert' data-testid='new-party-error' className='mt-4 text-sm text-sage-800'>
+            {validationMessage ?? errorMessage}
+          </p>
+        )
       )}
 
       <div className='mt-5 flex items-center gap-3'>

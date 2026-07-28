@@ -1,11 +1,11 @@
 'use client';
 
 import { ModerationCard } from './ModerationCard';
+import { SessionExpiredNotice } from './SessionExpiredNotice';
 import { fetchFlaggedGuests, fetchParties } from '@/lib/admin/client';
 import type { AdminGuest } from '@/lib/admin/projections';
 import { useLoadableResource } from '@/lib/admin/useLoadableResource';
 
-const LOAD_ERROR_MESSAGE = 'We could not load the moderation queue. Please try again.';
 const UNKNOWN_PARTY = 'an unknown party';
 
 interface QueueData {
@@ -29,7 +29,11 @@ const loadQueue = async (): Promise<QueueData> => {
 };
 
 export const ModerationQueue: React.FC = () => {
-  const { data, errorMessage, reload } = useLoadableResource(loadQueue, LOAD_ERROR_MESSAGE);
+  const { data, errorMessage, sessionExpired, reload } = useLoadableResource(loadQueue);
+
+  if (sessionExpired) {
+    return <SessionExpiredNotice />;
+  }
 
   if (errorMessage) {
     return (

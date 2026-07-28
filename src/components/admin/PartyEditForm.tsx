@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ConfirmButton } from './ConfirmButton';
 import { PartyFields, toAddGuestCap, type PartyFieldValues } from './PartyFields';
+import { SessionExpiredNotice } from './SessionExpiredNotice';
 import { deleteParty, updateParty } from '@/lib/admin/client';
 import type { AdminParty } from '@/lib/admin/projections';
 import { useAdminMutation } from '@/lib/admin/useAdminMutation';
@@ -21,7 +22,7 @@ const initialValues = (party: AdminParty): PartyFieldValues => ({
 
 export const PartyEditForm: React.FC<PartyEditFormProps> = ({ party, onSaved, onCancel }) => {
   const [values, setValues] = useState<PartyFieldValues>(() => initialValues(party));
-  const { isSaving, errorMessage, run } = useAdminMutation();
+  const { isSaving, errorMessage, sessionExpired, run } = useAdminMutation();
 
   const displayName = values.displayName.trim();
 
@@ -56,10 +57,14 @@ export const PartyEditForm: React.FC<PartyEditFormProps> = ({ party, onSaved, on
         capHint='How many extra guests this party may add themselves.'
       />
 
-      {errorMessage && (
-        <p role='alert' data-testid='party-edit-error' className='mt-3 text-sm text-sage-800'>
-          {errorMessage}
-        </p>
+      {sessionExpired ? (
+        <SessionExpiredNotice className='mt-3' />
+      ) : (
+        errorMessage && (
+          <p role='alert' data-testid='party-edit-error' className='mt-3 text-sm text-sage-800'>
+            {errorMessage}
+          </p>
+        )
       )}
 
       <div className='mt-4 flex flex-wrap items-center gap-3'>

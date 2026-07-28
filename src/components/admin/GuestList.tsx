@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { GuestForm } from './GuestForm';
 import { GuestRow } from './GuestRow';
+import { SessionExpiredNotice } from './SessionExpiredNotice';
 import { createGuest, type GuestFields } from '@/lib/admin/client';
 import type { AdminGuest } from '@/lib/admin/projections';
 import { useAdminMutation } from '@/lib/admin/useAdminMutation';
@@ -22,7 +23,7 @@ export const GuestList: React.FC<GuestListProps> = ({
   onChanged,
 }) => {
   const [isAdding, setIsAdding] = useState(false);
-  const { isSaving, errorMessage, run } = useAdminMutation();
+  const { isSaving, errorMessage, sessionExpired, run } = useAdminMutation();
 
   const addedByGuests = guests.filter((guest) => guest.source === GUEST_SOURCE.guestAdded).length;
 
@@ -51,13 +52,16 @@ export const GuestList: React.FC<GuestListProps> = ({
 
       <div className='mt-3'>
         {isAdding ? (
-          <GuestForm
-            submitLabel='Save guest'
-            isSaving={isSaving}
-            errorMessage={errorMessage}
-            onSubmit={add}
-            onCancel={() => setIsAdding(false)}
-          />
+          <>
+            <GuestForm
+              submitLabel='Save guest'
+              isSaving={isSaving}
+              errorMessage={sessionExpired ? null : errorMessage}
+              onSubmit={add}
+              onCancel={() => setIsAdding(false)}
+            />
+            {sessionExpired && <SessionExpiredNotice className='mt-3' />}
+          </>
         ) : (
           <button
             type='button'

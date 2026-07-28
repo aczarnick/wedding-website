@@ -126,4 +126,15 @@ describe('ModerationQueue', () => {
 
     expect(await screen.findByText('Sam Rivera')).toBeInTheDocument();
   });
+
+  it('renders the session-expired notice instead of the raw message on a 401', async () => {
+    vi.mocked(fetchFlaggedGuests).mockRejectedValueOnce(
+      new ApiError(401, 'unauthorized', 'Unauthorized'),
+    );
+    render(<ModerationQueue />);
+
+    expect(await screen.findByText(/session has expired/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('moderation-load-error')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument();
+  });
 });

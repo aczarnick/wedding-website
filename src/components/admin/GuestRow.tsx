@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ConfirmButton } from './ConfirmButton';
 import { GuestForm } from './GuestForm';
 import { RsvpStatusBadge } from './RsvpStatusBadge';
+import { SessionExpiredNotice } from './SessionExpiredNotice';
 import { deleteGuest, updateGuest, type GuestFields } from '@/lib/admin/client';
 import type { AdminGuest } from '@/lib/admin/projections';
 import { useAdminMutation } from '@/lib/admin/useAdminMutation';
@@ -16,7 +17,7 @@ interface GuestRowProps {
 
 export const GuestRow: React.FC<GuestRowProps> = ({ guest, onChanged }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const { isSaving, errorMessage, run } = useAdminMutation();
+  const { isSaving, errorMessage, sessionExpired, run } = useAdminMutation();
 
   const save = (fields: GuestFields) => {
     void run(() => updateGuest(guest.id, fields), () => {
@@ -82,14 +83,18 @@ export const GuestRow: React.FC<GuestRowProps> = ({ guest, onChanged }) => {
         />
       </span>
 
-      {errorMessage && (
-        <p
-          role='alert'
-          data-testid={`guest-row-error-${guest.id}`}
-          className='w-full text-sm text-sage-800'
-        >
-          {errorMessage}
-        </p>
+      {sessionExpired ? (
+        <SessionExpiredNotice className='w-full' />
+      ) : (
+        errorMessage && (
+          <p
+            role='alert'
+            data-testid={`guest-row-error-${guest.id}`}
+            className='w-full text-sm text-sage-800'
+          >
+            {errorMessage}
+          </p>
+        )
       )}
     </li>
   );

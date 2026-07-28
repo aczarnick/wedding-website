@@ -3,12 +3,11 @@
 import { useState } from 'react';
 import { NewPartyForm } from './NewPartyForm';
 import { PartyRow } from './PartyRow';
+import { SessionExpiredNotice } from './SessionExpiredNotice';
 import { fetchParties } from '@/lib/admin/client';
 import { ALL_STATUSES, filterParties } from '@/lib/admin/partyList';
 import { useLoadableResource } from '@/lib/admin/useLoadableResource';
 import { RSVP_STATUS } from '@/lib/enums';
-
-const LOAD_ERROR_MESSAGE = 'We could not load the guest list. Please try again.';
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: ALL_STATUSES, label: 'All statuses' },
@@ -24,8 +23,9 @@ export const PartyManager: React.FC = () => {
   const {
     data: parties,
     errorMessage,
+    sessionExpired,
     reload,
-  } = useLoadableResource(fetchParties, LOAD_ERROR_MESSAGE);
+  } = useLoadableResource(fetchParties);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<string>(ALL_STATUSES);
   const [expandedPartyId, setExpandedPartyId] = useState<string | null>(null);
@@ -35,6 +35,10 @@ export const PartyManager: React.FC = () => {
     setIsCreating(false);
     void reload();
   };
+
+  if (sessionExpired) {
+    return <SessionExpiredNotice />;
+  }
 
   if (errorMessage) {
     return (

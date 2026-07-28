@@ -45,6 +45,14 @@ describe('requestJson', () => {
     });
   });
 
+  it('yields empty details when the body carries only error and code', async () => {
+    stubFetch(jsonResponse(404, { error: 'Party not found', code: 'party_not_found' }));
+
+    const error = await requestJson('/api/thing').catch((caught: unknown) => caught);
+
+    expect((error as ApiError).details).toEqual({});
+  });
+
   it('falls back to unknown_error when the failure body is not JSON', async () => {
     stubFetch(new Response('<html>gateway blew up</html>', { status: 500 }));
 
