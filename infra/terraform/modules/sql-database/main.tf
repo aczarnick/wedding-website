@@ -52,18 +52,32 @@ resource "azurerm_mssql_server" "this" {
   tags = var.tags
 }
 
-# Serverless General Purpose. min_capacity 0.5 vCore floor; storage LRS (Local)
-# since the guest list is re-seedable and does not need geo-redundant backups.
+locals {
+  # Only serverless (GP_S_*) SKUs accept a vCore floor and an auto-pause delay;
+  # DTU SKUs (Basic, S*) reject both.
+  is_serverless = startswith(var.sku_name, "GP_S_")
+}
+
+# Storage is LRS (Local) since the guest list is re-seedable and does not need
+# geo-redundant backups. 2 GB is the Basic-tier ceiling and far above the ~25 MB
+# a guest list occupies.
 resource "azurerm_mssql_database" "rsvp" {
   name                        = "rsvp"
   server_id                   = azurerm_mssql_server.this.id
-  sku_name                    = "GP_S_Gen5_1"
-  min_capacity                = 0.5
+  sku_name                    = var.sku_name
+  min_capacity                = local.is_serverless ? 0.5 : null
   max_size_gb                 = 2
   auto_pause_delay_in_minutes = var.auto_pause_delay_in_minutes
   storage_account_type        = "Local"
 
   tags = var.tags
+
+  lifecycle {
+    precondition {
+      condition     = local.is_serverless == (var.auto_pause_delay_in_minutes != null)
+      error_message = "auto_pause_delay_in_minutes is required for serverless (GP_S_*) SKUs and must be null for DTU SKUs."
+    }
+  }
 }
 
 # Lets the Container App (Azure outbound) reach the server. The 0.0.0.0 rule is

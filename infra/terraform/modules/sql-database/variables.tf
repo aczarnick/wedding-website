@@ -41,9 +41,15 @@ variable "sql_admin_password" {
   default     = ""
 }
 
+variable "sku_name" {
+  type        = string
+  description = "Database SKU. 'Basic' (flat ~$5/mo, always warm) for production; a serverless 'GP_S_Gen5_1' for environments that idle long enough for auto-pause to pay off."
+}
+
 variable "auto_pause_delay_in_minutes" {
   type        = number
-  description = "Serverless auto-pause idle delay. 60 = pause after 1h idle; -1 = never pause (warm)."
+  description = "Serverless auto-pause idle delay, e.g. 60 = pause after 1h idle. Must be null for DTU SKUs, which do not auto-pause."
+  default     = null
 }
 
 variable "tags" {
