@@ -130,6 +130,18 @@ variable "db_auto_pause_delay_in_minutes" {
   default     = null
 }
 
+variable "db_pitr_retention_days" {
+  type        = number
+  description = "Point-in-time restore window in days. Capped at 7 on Basic, 35 elsewhere."
+  default     = 7
+}
+
+variable "db_ltr_weekly_retention" {
+  type        = string
+  description = "ISO 8601 duration a weekly full backup is kept for, e.g. 'P52W'. Empty disables long-term retention, which is the default for throwaway environments."
+  default     = ""
+}
+
 variable "admin_email" {
   type        = string
   description = "Admin address for the console. Doubles as the authorization allowlist (comma-separated). Empty denies everyone."

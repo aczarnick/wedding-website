@@ -70,12 +70,38 @@ resource "azurerm_mssql_database" "rsvp" {
   auto_pause_delay_in_minutes = var.auto_pause_delay_in_minutes
   storage_account_type        = "Local"
 
+  # Point-in-time restore. Azure applies a 7-day window by default; pinning it
+  # here means Terraform owns the value and reverts portal drift.
+  short_term_retention_policy {
+    retention_days = var.pitr_retention_days
+  }
+
+  # Weekly full backups kept in separate blob storage. Unlike PITR, these outlive
+  # the database, the server, and the resource group, and restore to any server
+  # in the same subscription — the only layer that survives a deletion.
+  #
+  # Weekly is the finest granularity Azure offers (Microsoft controls the
+  # timing), and the first copy can take up to 7 days to appear. An empty
+  # retention omits the policy entirely rather than configuring one to zero.
+  dynamic "long_term_retention_policy" {
+    for_each = var.ltr_weekly_retention == "" ? [] : [1]
+
+    content {
+      weekly_retention = var.ltr_weekly_retention
+    }
+  }
+
   tags = var.tags
 
   lifecycle {
     precondition {
       condition     = local.is_serverless == (var.auto_pause_delay_in_minutes != null)
       error_message = "auto_pause_delay_in_minutes is required for serverless (GP_S_*) SKUs and must be null for DTU SKUs."
+    }
+
+    precondition {
+      condition     = var.pitr_retention_days >= 1 && var.pitr_retention_days <= (var.sku_name == "Basic" ? 7 : 35)
+      error_message = "Basic caps PITR retention at 7 days; other SKUs allow up to 35."
     }
   }
 }

@@ -38,7 +38,14 @@ module "stack" {
   # Basic (5 DTU, 2 GB) is a flat ~$4.90/mo and never pauses, so guests never
   # eat a cold start. The previous serverless SKU with auto-pause disabled billed
   # ~0.68 vCore around the clock at $0.626/vCore-hour — ~$306/mo.
-  db_sku_name         = "Basic"
-  admin_email         = var.admin_email
-  admin_password_hash = var.admin_password_hash
+  db_sku_name = "Basic"
+  # 7 is both the Azure default and the Basic-tier ceiling; pinning it puts the
+  # value under Terraform so a portal edit is reverted. Free on DTU.
+  db_pitr_retention_days = 7
+  # A year of weekly full backups — the only layer that survives the server or
+  # resource group being deleted. Covers well past the 2026-10-10 wedding, and
+  # holds ~1.3 GB at a ~25 MB guest list. See docs/deployment/README.md.
+  db_ltr_weekly_retention = "P52W"
+  admin_email             = var.admin_email
+  admin_password_hash     = var.admin_password_hash
 }

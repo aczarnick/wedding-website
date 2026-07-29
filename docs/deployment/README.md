@@ -221,9 +221,9 @@ az group delete -n rg-czw-tfstate  -y
 
 ## RSVP database (Azure SQL)
 
-The RSVP feature uses an **Azure SQL logical server + one serverless database
-(`rsvp`) per environment**, provisioned by the `sql-database` module inside
-`env-stack`. No new compute: the existing Container App reaches it.
+The RSVP feature uses an **Azure SQL logical server + one `rsvp` database per
+environment**, provisioned by the `sql-database` module inside `env-stack`. No
+new compute: the existing Container App reaches it.
 
 **Passwordless for the app.** It connects with its per-env user-assigned
 identity (`id-czw-app-<env>`) via `authentication=DefaultAzureCredential`, with
@@ -238,10 +238,11 @@ matters: it allows Azure services plus a runner IP opened transiently per
 migrate job, and the credential lives only in the `SQL_ADMIN_PASSWORD` GitHub
 secret.
 
-**Cost:** staging auto-pauses after 60 min idle (~$5/mo storage floor);
-production runs warm (auto-pause disabled, min 0.5 vCore) to avoid a first-query
-resume delay (~$15–30/mo). This is a deliberate trade against the "~$5/mo idle
-floor" — consistent with production's warm `min_replicas = 1` policy.
+**Cost:** production is Basic (5 DTU, 2 GB) at a flat ~$4.90/mo — it never
+pauses, so guests never eat a cold start (#104). Staging is serverless
+(`GP_S_Gen5_1`) and auto-pauses after 60 min idle, since it idles enough for that
+to pay off. Backup costs are covered under
+[Backups and restore](#backups-and-restore).
 
 ### Prerequisites (set by `bootstrap-azure.sh`)
 
@@ -385,3 +386,100 @@ runner IP — GitHub runners aren't "Azure services") and added it to
 `czw-sql-admins` (to authenticate as the AAD admin). The migrate job authenticates
 passwordlessly via the runner's `az login` session. Migrations run per env in the
 promote order: staging → (approval) → production.
+
+### Backups and restore
+
+Two layers, both configured in the `sql-database` module. Neither needs a
+workflow, a credential, or a storage account.
+
+| Layer | Window | Granularity | Survives server deletion? |
+| --- | --- | --- | --- |
+| Point-in-time restore (PITR) | 7 days | Any second | **No** |
+| Long-term retention (LTR) | 52 weeks | Weekly | **Yes** |
+
+**PITR** is Azure's automatic full/differential/log backup chain. It restores
+production to any second in the last week, which is the layer for "a bad import
+or bulk edit corrupted the guest list". `db_pitr_retention_days = 7` is both the
+Azure default and the ceiling: retention is configurable 1–35 days on most
+tiers, **but only 1–7 on Basic**, which production runs. It is pinned in
+Terraform anyway so a portal edit gets reverted on the next apply. A plan-time
+precondition rejects a value above the cap, so raising it later fails the plan
+rather than the apply.
+
+**LTR** copies a full backup to separate blob storage weekly and keeps it a year
+(`db_ltr_weekly_retention = "P52W"`). These copies outlive the database, the
+logical server, *and* the resource group, and restore to any server in the same
+subscription — the only layer that survives a deletion. Two limits are inherent:
+weekly is the finest granularity Azure offers (Microsoft controls the timing),
+and the first copy can take up to **7 days** to appear after the policy is first
+applied.
+
+Staging overrides neither value: its PITR is pinned at the same default 7 days,
+and with `db_ltr_weekly_retention` empty it gets no LTR policy at all. Note that
+emptying that variable on an environment where LTR has *already* applied does not
+clear the policy — Terraform simply stops managing it. Removing it for real is
+`az sql db ltr-policy set --weekly-retention PT0S`.
+
+**Cost:** PITR is **free** on DTU SKUs — its storage is bundled into the database
+price, at any retention. LTR is the only billed layer, charged on actual
+consumption with no free allowance (the vCore model's "free backup storage equal
+to max data size" does not apply to DTU). The footprint is
+`retained weekly copies × compressed database size`, so **~1.3 GB** at a ~25 MB
+guest list, against a 2 GB database ceiling that caps the worst case at ~104 GB.
+Multiply by the LRS backup-storage rate for the region on the
+[pricing calculator](https://azure.microsoft.com/pricing/calculator/) for the
+current figure — at these volumes it is a rounding error next to the ~$4.90/mo
+database.
+
+Backups inherit `storage_account_type = "Local"`, so they are LRS. Geo-restore
+into another region is therefore **not** possible; that was a deliberate trade.
+
+#### Restoring
+
+A restore never overwrites the live database — Azure always creates a new one.
+Recover into a scratch name, verify it, then swap.
+
+```bash
+RG=rg-czw-production
+SERVER=sql-czw-production
+
+# --- Point-in-time (within the last 7 days) ---
+az sql db restore \
+  --resource-group "$RG" --server "$SERVER" --name rsvp \
+  --dest-name rsvp-restored \
+  --time "2026-07-29T14:30:00Z"      # UTC, must be inside the retention window
+
+# --- Long-term (weekly copies, up to a year back) ---
+az sql db ltr-backup list \
+  --location centralus --server "$SERVER" --database rsvp -o table
+
+BACKUP_ID=$(az sql db ltr-backup show \
+  --location centralus --server "$SERVER" --database rsvp \
+  --name "<name-from-the-list>" --query id -o tsv)
+
+az sql db ltr-backup restore \
+  --dest-database rsvp-restored --dest-server "$SERVER" \
+  --dest-resource-group "$RG" --backup-id "$BACKUP_ID"
+```
+
+Then verify the recovered copy and swap it in. Renaming is T-SQL, not `az`:
+
+```sql
+ALTER DATABASE [rsvp]          MODIFY NAME = [rsvp-old];
+ALTER DATABASE [rsvp-restored] MODIFY NAME = [rsvp];
+```
+
+The app picks the new database up on its next connection — `DATABASE_URL` names
+the database `rsvp`, so nothing needs redeploying. Drop `rsvp-old` once you are
+satisfied; a Basic database is ~$4.90/mo for as long as you keep it around.
+
+**If the whole server or resource group is gone**, only the LTR path works, and
+it changes shape: run `az sql db ltr-backup list` with `--location` but no
+`--resource-group`, restore into a *new* server, and note that you need
+permissions scoped to the subscription rather than the resource group. Recreate
+the server with `terraform apply` first so the restore has a target.
+
+**Teardown leaves backups behind.** `terraform destroy` deletes the database but
+**not** its LTR backups — that is precisely what makes them survive a deletion.
+They keep billing until they expire, up to 52 weeks. To stop that, delete them
+explicitly with `az sql db ltr-backup delete` after destroying the environment.
