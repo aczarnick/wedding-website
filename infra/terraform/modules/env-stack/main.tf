@@ -61,6 +61,8 @@ module "database" {
   tenant_id                   = var.tenant_id
   sku_name                    = var.db_sku_name
   auto_pause_delay_in_minutes = var.db_auto_pause_delay_in_minutes
+  pitr_retention_days         = var.db_pitr_retention_days
+  ltr_weekly_retention        = var.db_ltr_weekly_retention
   tags                        = var.tags
 }
 

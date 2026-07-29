@@ -52,6 +52,18 @@ variable "auto_pause_delay_in_minutes" {
   default     = null
 }
 
+variable "pitr_retention_days" {
+  type        = number
+  description = "Point-in-time restore window. Azure allows 1-35 days, but only 1-7 on Basic. Free on DTU SKUs, where PITR storage is bundled into the database price."
+  default     = 7
+}
+
+variable "ltr_weekly_retention" {
+  type        = string
+  description = "ISO 8601 duration a weekly full backup is kept for, e.g. 'P52W'. Unlike PITR, these copies survive deletion of the database, the server, and the resource group. Empty omits the policy block, which leaves LTR unconfigured on a new database but does NOT clear a policy already applied to an existing one — clearing that is a manual `az sql db ltr-policy set --weekly-retention PT0S`."
+  default     = ""
+}
+
 variable "tags" {
   type        = map(string)
   description = "Resource tags."
