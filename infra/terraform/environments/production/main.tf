@@ -30,12 +30,15 @@ module "stack" {
   budget_start_date          = var.budget_start_date
   tags                       = var.tags
 
-  sql_admin_group_name           = var.sql_admin_group_name
-  sql_admin_group_object_id      = var.sql_admin_group_object_id
-  sql_admin_login                = var.sql_admin_login
-  sql_admin_password             = var.sql_admin_password
-  tenant_id                      = var.tenant_id
-  db_auto_pause_delay_in_minutes = -1
-  admin_email                    = var.admin_email
-  admin_password_hash            = var.admin_password_hash
+  sql_admin_group_name      = var.sql_admin_group_name
+  sql_admin_group_object_id = var.sql_admin_group_object_id
+  sql_admin_login           = var.sql_admin_login
+  sql_admin_password        = var.sql_admin_password
+  tenant_id                 = var.tenant_id
+  # Basic (5 DTU, 2 GB) is a flat ~$4.90/mo and never pauses, so guests never
+  # eat a cold start. The previous serverless SKU with auto-pause disabled billed
+  # ~0.68 vCore around the clock at $0.626/vCore-hour — ~$306/mo.
+  db_sku_name         = "Basic"
+  admin_email         = var.admin_email
+  admin_password_hash = var.admin_password_hash
 }

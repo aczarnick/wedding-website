@@ -119,9 +119,15 @@ variable "tenant_id" {
   description = "Entra tenant ID."
 }
 
+variable "db_sku_name" {
+  type        = string
+  description = "Database SKU. 'Basic' for production (flat cost, no cold start); 'GP_S_Gen5_1' for staging, which idles enough that auto-pause is cheaper."
+}
+
 variable "db_auto_pause_delay_in_minutes" {
   type        = number
-  description = "Serverless auto-pause delay. 60 for staging (pause when idle); -1 for production (stay warm)."
+  description = "Serverless auto-pause delay, e.g. 60 for staging. Null for DTU SKUs such as Basic."
+  default     = null
 }
 
 variable "admin_email" {

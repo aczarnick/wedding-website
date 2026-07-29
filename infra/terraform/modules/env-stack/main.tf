@@ -59,6 +59,7 @@ module "database" {
   sql_admin_login             = var.sql_admin_login
   sql_admin_password          = var.sql_admin_password
   tenant_id                   = var.tenant_id
+  sku_name                    = var.db_sku_name
   auto_pause_delay_in_minutes = var.db_auto_pause_delay_in_minutes
   tags                        = var.tags
 }

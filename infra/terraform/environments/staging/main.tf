@@ -35,6 +35,7 @@ module "stack" {
   sql_admin_login                = var.sql_admin_login
   sql_admin_password             = var.sql_admin_password
   tenant_id                      = var.tenant_id
+  db_sku_name                    = "GP_S_Gen5_1"
   db_auto_pause_delay_in_minutes = 60
   admin_email                    = var.admin_email
   admin_password_hash            = var.admin_password_hash
