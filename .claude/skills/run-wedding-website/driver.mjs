@@ -65,9 +65,9 @@ async function smoke() {
   await page.waitForFunction(() => window.scrollY > 0);
   await screenshot(page, 'faqs-scrolled');
 
-  await page.goto(`${BASE_URL}/gallery`);
-  await page.getByText('Coming Soon').waitFor();
-  await screenshot(page, 'gallery');
+  await page.goto(`${BASE_URL}/rsvp`);
+  await page.getByRole('heading', { name: 'RSVP' }).waitFor();
+  await screenshot(page, 'rsvp');
   await browser.close();
 
   const mobile = await launchPage(MOBILE);

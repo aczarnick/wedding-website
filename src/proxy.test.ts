@@ -123,7 +123,7 @@ describe('config.matcher', () => {
     },
   );
 
-  it.each(['/', '/gallery', '/api/auth/session'])('does not match %s', (path) => {
+  it.each(['/', '/rsvp', '/api/auth/session'])('does not match %s', (path) => {
     const regexes = config.matcher.map(matcherPatternToRegExp);
 
     expect(regexes.some((regex) => regex.test(path))).toBe(false);

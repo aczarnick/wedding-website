@@ -19,7 +19,6 @@ No test suite is currently configured. Validate changes by running `npm run buil
 
 **Pages (Next.js App Router):**
 - `/` → `src/app/page.tsx` – Main landing page (server component); renders hero, details, travel, FAQs, and footer
-- `/gallery` → `src/app/gallery/page.tsx` – Gallery page (coming soon placeholder)
 - `/registry` → `src/app/registry/page.tsx` – Redirects to The Knot registry (`REGISTRY_URL` in `src/constants/registry.ts`)
 
 **Key Files & Directories:**
@@ -55,7 +54,7 @@ No test suite is currently configured. Validate changes by running `npm run buil
 - **Countdown:** `DaysUntilWedding()` is deliberately called client-side in a `useEffect` inside `HeroSection` (initial state is a non-breaking space) to avoid hydration mismatches and a stale build-time value; do not move it to the server or call it during render
 - **Module path alias:** `@/` resolves to `src/` (e.g., `import { Header } from '@/components/Header'`)
 - **Images:** Always use Next.js `Image` component with `alt` text; use `StaticImageData` imports for local images in constants
-- **Navigation:** `NAV_LINKS` in `src/constants/events.ts` drives both desktop and mobile nav. `Registry` and `Gallery` route to `/registry` and `/gallery`; all others use `/#SectionId` hash links matching divider `id` props
+- **Navigation:** `NAV_LINKS` in `src/constants/events.ts` drives both desktop and mobile nav. `Registry` and `RSVP` route to `/registry` and `/rsvp`; all others use `/#SectionId` hash links matching divider `id` props
 - **Section IDs:** `Details`, `Travel`, `FAQs` — these must match the `id` props on the divider components in `page.tsx`
 
 ### TypeScript & Code Quality
@@ -70,7 +69,6 @@ src/
     layout.tsx          # Root layout, font, metadata
     page.tsx            # Main landing page (server component)
     globals.css         # Tailwind v4 + sage color theme
-    gallery/page.tsx    # Gallery placeholder page
     registry/page.tsx   # Redirects to The Knot registry
   components/
     Header.tsx          # Sticky nav + mobile drawer
@@ -106,7 +104,7 @@ public/
 - **No backend API:** Next.js app with server components and static data in `src/constants/*`
 - **Standalone output:** `next.config.ts` sets `output: 'standalone'`; Docker support via `Dockerfile` and `docker-compose.yml`
 - **Wedding date:** October 10, 2026 — hardcoded in `src/utils/dateUtils.ts`
-- **Gallery page** is a "Coming Soon" placeholder; **Registry page** redirects to The Knot. `NAV_LINKS` includes both
+- **Registry page** redirects to The Knot (`REGISTRY_URL`); `NAV_LINKS` includes it as a route link
 
 ## Development Tips
 
