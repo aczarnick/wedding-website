@@ -161,6 +161,17 @@ npm run build > /tmp/build.log 2>&1; echo "EXIT=$?"; tail -12 /tmp/build.log
 drive the app per the `run-wedding-website` skill and *view* the screenshots — a
 passing exit code with an unviewed screenshot proves nothing.
 
+**First prove *which tree* the server is serving.** A dev server started in a
+worktree announces the **main** repo as its workspace root ("detected multiple
+lockfiles … selected `/…/wedding-website/package-lock.json`"), which reads
+exactly like it is serving the wrong tree. It is not — Next serves cwd — but
+neither reading is safe to assume. Assert it against something the branch
+changed before trusting any screenshot:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/<changed-route>
+```
+
 For any issue whose deliverable is a **restriction** (auth, deadline lock, size or
 rate limit), the runtime check is the gate, and it must prove **both directions**:
 
