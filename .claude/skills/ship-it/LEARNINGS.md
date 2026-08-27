@@ -19,6 +19,23 @@ another run's uncommitted edits.
 
 ## Run log
 
+### 2026-08-26 — PR #107 (consolidate 5 Dependabot PRs)
+
+First run consolidating multiple open Dependabot PRs into one, rather than
+shipping a single issue — the skill's phases (issue resolution, plan-grill) don't
+apply, but the git-safety, lockfile, and gate machinery all transferred cleanly.
+
+- **`npm install <pkg>@<version>` tightens the `package.json` semver range to
+  the installed version, even when the target range was already satisfied.**
+  Installing `tailwindcss@4.3.3` rewrote `"^4"` to `"^4.3.3"` in the lockfile
+  regen step, but the real Dependabot PR for that bump only touched
+  `package-lock.json` — `package.json` stayed at `"^4"`. Diffing my regenerated
+  `package.json` against each individual Dependabot PR's diff (`gh pr diff <n>`)
+  caught the mismatch before it shipped an unintended range tightening. When
+  consolidating multiple dependency-bump PRs by hand, verify the resulting
+  `package.json` ranges against each source PR's actual diff — don't assume
+  `npm install <pkg>@<version>` reproduces Dependabot's own edit.
+
 ### 2026-07-29 — issue #103 (RSVP database backups)
 
 First infra-only run. The gate can't reach the cloud, so the interesting question
