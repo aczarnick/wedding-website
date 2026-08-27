@@ -30,7 +30,7 @@ To change site content, edit the constants — not the components.
 
 ### Navigation ↔ section ID coupling
 
-`NAV_LINKS` in `src/constants/events.ts` drives both desktop and mobile nav in `Header.tsx`. `Registry` and `Gallery` are route links (`/registry` redirects to The Knot via `REGISTRY_URL` in `src/constants/registry.ts`; `/gallery` is a "Coming Soon" placeholder page); all other links are `/#SectionId` hash links that must match the `id` props on the divider components in `page.tsx` (`Details`, `Travel`, `FAQs`). The dividers (`src/components/dividers/`) are layout wrappers whose `id` prop doubles as the scroll anchor target.
+`NAV_LINKS` in `src/constants/events.ts` drives both desktop and mobile nav in `Header.tsx`. `Registry` and `RSVP` are route links (`/registry` redirects to The Knot via `REGISTRY_URL` in `src/constants/registry.ts`); all other links are `/#SectionId` hash links that must match the `id` props on the divider components in `page.tsx` (`Details`, `Travel`, `FAQs`). The dividers (`src/components/dividers/`) are layout wrappers whose `id` prop doubles as the scroll anchor target.
 
 Adding a section: wrap content in a divider with an `id`, add that id string to `NAV_LINKS`. Adding a page route: create `src/app/<name>/page.tsx`, add the capitalized name to `NAV_LINKS`, and update the `isRouteLink` helper in `Header.tsx`.
 

@@ -8,7 +8,6 @@ const EXPECTED_HREFS: Record<(typeof NAV_LINKS)[number], string> = {
   Travel: '/#Travel',
   FAQs: '/#FAQs',
   Registry: '/registry',
-  Gallery: '/gallery',
   RSVP: '/rsvp',
 };
 

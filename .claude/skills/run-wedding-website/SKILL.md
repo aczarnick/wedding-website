@@ -37,12 +37,12 @@ Then drive it:
 
 ```bash
 node .claude/skills/run-wedding-website/driver.mjs smoke
-node .claude/skills/run-wedding-website/driver.mjs shot /gallery --mobile
+node .claude/skills/run-wedding-website/driver.mjs shot /rsvp --mobile
 ```
 
 | command | what it does |
 |---|---|
-| `smoke` | Full flow: home hero + client-side countdown, click FAQs nav link and verify scroll, `/gallery` page, open the mobile nav drawer. Screenshots each step, fails (exit 1) on any console error. Prints `SMOKE PASSED`. |
+| `smoke` | Full flow: home hero + client-side countdown, click FAQs nav link and verify scroll, `/rsvp` page, open the mobile nav drawer. Screenshots each step, fails (exit 1) on any console error. Prints `SMOKE PASSED`. |
 | `shot <path> [--mobile]` | Navigate to `<path>`, wait for network idle, screenshot. `--mobile` uses a 390×844 viewport. |
 
 Screenshots land in `.claude/skills/run-wedding-website/screenshots/`
@@ -70,7 +70,7 @@ No test suite. The verification gate is:
 npm run lint && npm run build
 ```
 
-Both pass clean; `next build` prerenders `/`, `/gallery`, `/registry`,
+Both pass clean; `next build` prerenders `/`, `/registry`,
 `/_not-found` as static.
 
 ## Gotchas
