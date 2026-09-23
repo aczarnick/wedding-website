@@ -5,6 +5,7 @@ import { NAV_LINKS } from '@/constants/events';
 
 const EXPECTED_HREFS: Record<(typeof NAV_LINKS)[number], string> = {
   Details: '/#Details',
+  'Day Of': '/#DayOf',
   Travel: '/#Travel',
   FAQs: '/#FAQs',
   Registry: '/registry',

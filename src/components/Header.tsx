@@ -12,7 +12,8 @@ const getHref = (link: string): string => {
   if (ROUTE_LINKS.has(link)) {
     return `/${link.toLowerCase()}`;
   }
-  return `/#${link}`;
+  // Section ids can't contain spaces, so "Day Of" anchors to #DayOf
+  return `/#${link.replace(/\s+/g, '')}`;
 };
 
 const isRouteLink = (link: string): boolean => ROUTE_LINKS.has(link);

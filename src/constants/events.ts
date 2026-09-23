@@ -38,4 +38,4 @@ export const EVENTS: Record<string, EventDetails> = {
   },
 };
 
-export const NAV_LINKS = ["Details", "Travel", "FAQs", "Registry", "RSVP"] as const;
+export const NAV_LINKS = ["Details", "Day Of", "Travel", "FAQs", "Registry", "RSVP"] as const;

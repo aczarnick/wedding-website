@@ -23,6 +23,7 @@ Wedding website (wedding date: October 10, 2026, hardcoded in `src/utils/dateUti
 `src/app/page.tsx` (server component) is the main landing page. It composes presentational components fed entirely by typed constants:
 
 - `src/constants/events.ts` — `EVENTS` record (ceremony, reception) rendered via `EventSection`; also exports `NAV_LINKS`
+- `src/constants/shuttle.ts` — `SHUTTLE` schedule (stops, capacity, run times) rendered via `ShuttleSection` in the Day Of section
 - `src/constants/hotels.ts` — `HOTELS` record rendered via `TravelSection`
 - `src/constants/faqs.ts` — `FAQS` array rendered via `FAQSection`
 
@@ -30,7 +31,7 @@ To change site content, edit the constants — not the components.
 
 ### Navigation ↔ section ID coupling
 
-`NAV_LINKS` in `src/constants/events.ts` drives both desktop and mobile nav in `Header.tsx`. `Registry` and `RSVP` are route links (`/registry` redirects to The Knot via `REGISTRY_URL` in `src/constants/registry.ts`); all other links are `/#SectionId` hash links that must match the `id` props on the divider components in `page.tsx` (`Details`, `Travel`, `FAQs`). The dividers (`src/components/dividers/`) are layout wrappers whose `id` prop doubles as the scroll anchor target.
+`NAV_LINKS` in `src/constants/events.ts` drives both desktop and mobile nav in `Header.tsx`. `Registry` and `RSVP` are route links (`/registry` redirects to The Knot via `REGISTRY_URL` in `src/constants/registry.ts`); all other links are `/#SectionId` hash links that must match the `id` props on the divider components in `page.tsx` (`Details`, `DayOf`, `Travel`, `FAQs`). `getHref` in `Header.tsx` strips whitespace, so a multi-word label like `Day Of` anchors to `#DayOf`. The dividers (`src/components/dividers/`) are layout wrappers whose `id` prop doubles as the scroll anchor target.
 
 Adding a section: wrap content in a divider with an `id`, add that id string to `NAV_LINKS`. Adding a page route: create `src/app/<name>/page.tsx`, add the capitalized name to `NAV_LINKS`, and update the `isRouteLink` helper in `Header.tsx`.
 
