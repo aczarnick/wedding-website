@@ -23,7 +23,7 @@ Wedding website (wedding date: October 10, 2026, hardcoded in `src/utils/dateUti
 `src/app/page.tsx` (server component) is the main landing page. It composes presentational components fed entirely by typed constants:
 
 - `src/constants/events.ts` — `EVENTS` record (ceremony, reception) rendered via `EventSection`; also exports `NAV_LINKS`
-- `src/constants/shuttle.ts` — `SHUTTLE` schedule (stops, capacity, run times) rendered via `ShuttleSection` in the Day Of section
+- `src/constants/shuttle.ts` — `SHUTTLE` details (stops, capacity, the two pre-ceremony trips, hourly start, last rides home) rendered via `ShuttleSection` in the Day Of section
 - `src/constants/hotels.ts` — `HOTELS` record rendered via `TravelSection`
 - `src/constants/faqs.ts` — `FAQS` array rendered via `FAQSection`
 
