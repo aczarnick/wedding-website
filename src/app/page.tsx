@@ -5,6 +5,7 @@ import { Footer } from '@/components/Footer';
 import { EVENTS } from '@/constants/events';
 import { HOTELS } from '@/constants/hotels';
 import { TravelSection } from '@/components/TravelSection';
+import { ShuttleSection } from '@/components/ShuttleSection';
 import { GradientGlowDivider, SideLinesDivider, BottomGradientDivider } from '@/components/dividers';
 
 const Home = () => {
@@ -18,6 +19,17 @@ const Home = () => {
         >
           <EventSection {...EVENTS.ceremony} />
           <EventSection {...EVENTS.reception} />
+        </GradientGlowDivider>
+
+        <GradientGlowDivider
+          id='DayOf'
+          glowPosition="top"
+        >
+          <h1 className="text-3xl text-center text-sage-800 pt-12">Day Of</h1>
+          <p className="text-center text-sm uppercase tracking-[0.3em] text-sage-700/70 mt-3">Getting there</p>
+          <div className="mt-10 pb-16">
+            <ShuttleSection />
+          </div>
         </GradientGlowDivider>
 
         <SideLinesDivider 

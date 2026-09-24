@@ -1,3 +1,5 @@
+import { SHUTTLE } from "./shuttle";
+
 export interface FAQ {
   question: string;
   answer: string;
@@ -11,6 +13,11 @@ export const FAQS: FAQ[] = [
   {
     question: "Is this in the middle of nowhere?",
     answer: "Yes, and it's beautiful! The ceremony and reception will be at Claire's Grandmother's farm!",
+  },
+  {
+    question: "Can I drive to the farm?",
+    answer: `Please don't if you can avoid it — parking at the farm is extremely limited. A shuttle runs between the Baymont and Cobblestone and the farm before the ceremony and every hour after, with the last ride back to the hotels at ${SHUTTLE.lastRidesHome.at(-1)}.`,
+    link: { href: "/#DayOf", label: "See the shuttle schedule →" },
   },
   {
     question: "What should I wear?",

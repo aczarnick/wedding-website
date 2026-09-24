@@ -9,6 +9,7 @@ describe('Home', () => {
     expect(screen.getByText('Alex & Claire')).toBeInTheDocument();
     expect(screen.getAllByText('Ceremony').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Reception').length).toBeGreaterThan(0);
+    expect(screen.getByText('Day Of', { selector: 'h1' })).toBeInTheDocument();
     expect(screen.getByText('Travel Recommendations')).toBeInTheDocument();
     expect(screen.getAllByText('FAQs').length).toBeGreaterThan(0);
   });
