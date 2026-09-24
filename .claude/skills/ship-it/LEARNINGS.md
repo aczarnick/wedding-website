@@ -19,6 +19,40 @@ another run's uncommitted edits.
 
 ## Run log
 
+### 2026-08-26 — issue #109 (remove the Gallery page)
+
+Scope pivoted mid-run: the session opened as "build the gallery" and became
+"delete it" after the brainstorm. Re-classifying from architectural to bounded
+on a *replaced* request (not a shrinking one) was correct — the ratchet forbids
+downgrading within a task, not starting a new one.
+
+- **A dev server started inside a worktree announces the *main* repo as its
+  workspace root, and the warning reads like it is serving the wrong tree.**
+  Turbopack walks up from cwd to the outermost lockfile: `We detected multiple
+  lockfiles and selected /…/wedding-website/package-lock.json as the root
+  directory`, then lists the worktree's own lockfile as "additional". It is
+  still serving cwd. Don't infer it either way — assert it against something the
+  branch actually changed (`curl -o /dev/null -w '%{http_code}' …/gallery` → 404
+  on the branch, 200 on master) *before* trusting a single screenshot. Working-
+  directory drift has now bitten across #71 and #109; promoted to `SKILL.md`
+  Phase 6.
+- **`sips -c H W --cropOffset 0 0` center-crops — it does not anchor to the
+  top.** Cropping a 1280×900 screenshot to a "nav bar strip" yielded a slice of
+  the middle of the hero photo containing no nav at all: a plausible-looking,
+  entirely uninformative image that would have shipped if it had not been
+  opened. Downscale (`-Z`) instead of cropping. The existing "actually open the
+  screenshots" rule is the only thing that caught it. → `references/pr-screenshots.md`.
+- **Prove a "the types prevent this" claim by re-introducing the violation.**
+  The PR asserts that `EXPECTED_HREFS: Record<(typeof NAV_LINKS)[number], string>`
+  makes a stale nav entry a build failure. Re-adding the deleted key and
+  capturing the actual `TS2353` turned that from an assertion into evidence for
+  about thirty seconds of work. Cheap enough to be the default whenever a PR body
+  claims a compile-time guarantee.
+- **zsh aborts the entire `rm` when *any* glob matches nothing.**
+  `rm -f dir/*.png dir/*.jpg` with no `.jpg` present fails `no matches found` and
+  removes **neither** pattern — stale files survive into the commit. List explicit
+  paths, or one pattern per command.
+
 ### 2026-08-26 — PR #107 (consolidate 5 Dependabot PRs)
 
 First run consolidating multiple open Dependabot PRs into one, rather than

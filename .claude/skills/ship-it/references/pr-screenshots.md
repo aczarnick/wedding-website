@@ -54,6 +54,12 @@ That took 1.2 MB to 187 KB, in line with the 17–400 KB range already on `maste
 UI-chrome shots (drawers, nav bars, flat color) stay PNG. `check:images` only
 gates `public/images`, so nothing enforces this for you.
 
+**Downscale (`-Z`); don't crop.** `sips -c H W --cropOffset 0 0` center-crops —
+it does not anchor to the top. Cropping a full-page shot down to "just the nav
+bar" returns a strip from the middle of the page with no nav in it, which looks
+like a real screenshot and says nothing. A 1000px-wide downscale keeps a nav bar
+legible.
+
 ## Not available
 
 Uploading through the GitHub web UI (canonical `user-attachments` URLs, zero repo
