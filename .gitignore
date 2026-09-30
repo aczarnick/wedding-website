@@ -55,6 +55,9 @@ CLAUDE.md
 # run-wedding-website skill driver output
 .claude/skills/run-wedding-website/screenshots/
 
+# ship-it isolated worktrees (one per run; see .claude/skills/ship-it/SKILL.md Phase 2)
+.claude/worktrees/
+
 # Terraform
 **/.terraform/*
 *.tfstate

@@ -38,6 +38,9 @@ First run in a **Claude Code cloud container** instead of the Mac. None of
   docker job, unless the diff touches the Dockerfile or dependencies.
 - `pkill -f 'next start'` kills the Bash tool's own shell (exit 144), because the
   pattern matches its command line. Kill the `next-server` PID found via `ps`.
+- `.gitignore` did **not** cover `.claude/worktrees/`, although Phase 2 says it
+  does, so every run left the main tree with untracked worktree directories.
+  Fixed in the same PR as this entry.
 - A request with no GitHub issue behind it went through fine: skip `Closes #n`, say
   so in the PR body, and treat the user's message as the spec.
 
