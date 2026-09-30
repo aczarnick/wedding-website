@@ -1,4 +1,4 @@
-import { SHUTTLE } from '@/constants/shuttle';
+import { DRIVING_NOTE, SHUTTLE } from '@/constants/shuttle';
 
 export const ShuttleSection: React.FC = () => {
   const [firstRideHome, lastRideHome] = SHUTTLE.lastRidesHome;
@@ -12,6 +12,8 @@ export const ShuttleSection: React.FC = () => {
           <span className="font-semibold">Please ride the shuttle!</span>{' '}
           Parking at the farm is extremely limited, so we&apos;re asking everyone to leave the car at the hotel.
         </p>
+
+        <p className="text-sm mt-3 text-center">{DRIVING_NOTE}</p>
 
         <p className="text-sm mt-6 text-center">
           The bus picks up at {SHUTTLE.stops[0]}, then {SHUTTLE.stops[1]} across the street, and heads
