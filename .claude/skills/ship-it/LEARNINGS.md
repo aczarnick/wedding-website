@@ -19,6 +19,28 @@ another run's uncommitted edits.
 
 ## Run log
 
+### 2026-09-30 — PR #124 (Day Of schedule + parking note)
+
+First run in a **Claude Code cloud container** instead of the Mac. None of
+`references/environment.md` applies there, and each difference cost a retry:
+
+- Only Node 22 is installed, and `npm ci` hard-fails on `engines` (`node >=24`).
+  Download the Linux tarball from `nodejs.org/dist` into the scratchpad and put its
+  `bin/` first on `PATH` for every npm command.
+- `run-wedding-website/driver.mjs` hard-codes macOS Chrome. Launch
+  `playwright-core` with `executablePath: '/opt/pw-browsers/chromium-<ver>/chrome-linux/chrome'`.
+- No `sips` and no PIL for shrinking screenshots. Take them as JPEG straight from
+  Playwright (`type: 'jpeg', quality: 80`); a gradient-background section went from
+  ~480 KB PNG to 70–180 KB.
+- `docker` exists but the daemon isn't running: start `dockerd` in the background.
+  The Phase 7 build then still fails at `apk add`, because the egress proxy's CA
+  isn't trusted inside the Alpine stage. Record it as not run and lean on CI's
+  docker job, unless the diff touches the Dockerfile or dependencies.
+- `pkill -f 'next start'` kills the Bash tool's own shell (exit 144), because the
+  pattern matches its command line. Kill the `next-server` PID found via `ps`.
+- A request with no GitHub issue behind it went through fine: skip `Closes #n`, say
+  so in the PR body, and treat the user's message as the spec.
+
 ### 2026-08-26 — PR #107 (consolidate 5 Dependabot PRs)
 
 First run consolidating multiple open Dependabot PRs into one, rather than
