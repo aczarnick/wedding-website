@@ -29,9 +29,10 @@ First run in a **Claude Code cloud container** instead of the Mac. None of
   `bin/` first on `PATH` for every npm command.
 - `run-wedding-website/driver.mjs` hard-codes macOS Chrome. Launch
   `playwright-core` with `executablePath: '/opt/pw-browsers/chromium-<ver>/chrome-linux/chrome'`.
-- No `sips` and no PIL for shrinking screenshots. Take them as JPEG straight from
-  Playwright (`type: 'jpeg', quality: 80`); a gradient-background section went from
-  ~480 KB PNG to 70–180 KB.
+- No `sips` and no PIL, but ImageMagick 6 (`convert`) is installed and covers every
+  `sips` step — commands in `references/pr-screenshots.md`. This run instead took
+  shots as JPEG straight from Playwright (`type: 'jpeg', quality: 80`), which also
+  works: a gradient-background section went from ~480 KB PNG to 70–180 KB.
 - `docker` exists but the daemon isn't running: start `dockerd` in the background.
   The Phase 7 build then still fails at `apk add`, because the egress proxy's CA
   isn't trusted inside the Alpine stage. Record it as not run and lean on CI's

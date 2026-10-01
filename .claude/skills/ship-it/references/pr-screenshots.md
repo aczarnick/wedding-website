@@ -51,6 +51,18 @@ sips -s format jpeg -s formatOptions 80 <file>         # photo-heavy shots
 ```
 
 That took 1.2 MB to 187 KB, in line with the 17–400 KB range already on `master`.
+
+A cloud container has no `sips`; use ImageMagick, which writes a new file rather
+than editing in place:
+
+```bash
+convert <file> -resize '900x900>' <out>.png                  # downscale (never enlarges)
+convert <file> -resize '900x900>' -quality 80 <out>.jpg      # photo-heavy shots
+convert <file> -gravity North -crop 1280x120+0+0 +repage <out>.png   # top strip, e.g. nav bar
+```
+
+The JPEG line took a 1280×1353, 399 KB RSVP shot to 37 KB.
+
 UI-chrome shots (drawers, nav bars, flat color) stay PNG. `check:images` only
 gates `public/images`, so nothing enforces this for you.
 
