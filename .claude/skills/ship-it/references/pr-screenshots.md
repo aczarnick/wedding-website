@@ -66,6 +66,13 @@ The JPEG line took a 1280×1353, 399 KB RSVP shot to 37 KB.
 UI-chrome shots (drawers, nav bars, flat color) stay PNG. `check:images` only
 gates `public/images`, so nothing enforces this for you.
 
+**With `sips`, downscale (`-Z`); don't crop.** `sips -c H W --cropOffset 0 0`
+center-crops — it does not anchor to the top. Cropping a full-page shot down to
+"just the nav bar" returns a strip from the middle of the page with no nav in it,
+which looks like a real screenshot and says nothing. A 1000px-wide downscale keeps
+a nav bar legible. ImageMagick's `-gravity North` crop above does anchor to the
+top.
+
 ## Not available
 
 Uploading through the GitHub web UI (canonical `user-attachments` URLs, zero repo
