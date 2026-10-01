@@ -6,6 +6,7 @@ import { EVENTS } from '@/constants/events';
 import { HOTELS } from '@/constants/hotels';
 import { TravelSection } from '@/components/TravelSection';
 import { ShuttleSection } from '@/components/ShuttleSection';
+import { ScheduleSection } from '@/components/ScheduleSection';
 import { GradientGlowDivider, SideLinesDivider, BottomGradientDivider } from '@/components/dividers';
 
 const Home = () => {
@@ -26,8 +27,9 @@ const Home = () => {
           glowPosition="top"
         >
           <h1 className="text-3xl text-center text-sage-800 pt-12">Day Of</h1>
-          <p className="text-center text-sm uppercase tracking-[0.3em] text-sage-700/70 mt-3">Getting there</p>
-          <div className="mt-10 pb-16">
+          <p className="text-center text-sm uppercase tracking-[0.3em] text-sage-700/70 mt-3">Schedule &amp; getting there</p>
+          <div className="mt-10 space-y-10 pb-16">
+            <ScheduleSection />
             <ShuttleSection />
           </div>
         </GradientGlowDivider>

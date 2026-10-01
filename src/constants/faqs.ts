@@ -1,4 +1,4 @@
-import { SHUTTLE } from "./shuttle";
+import { DRIVING_NOTE, SHUTTLE } from "./shuttle";
 
 export interface FAQ {
   question: string;
@@ -16,7 +16,7 @@ export const FAQS: FAQ[] = [
   },
   {
     question: "Can I drive to the farm?",
-    answer: `Please don't if you can avoid it — parking at the farm is extremely limited. A shuttle runs between the Baymont and Cobblestone and the farm before the ceremony and every hour after, with the last ride back to the hotels at ${SHUTTLE.lastRidesHome.at(-1)}.`,
+    answer: `Please don't if you can avoid it — parking at the farm is extremely limited. A shuttle runs between the Baymont and Cobblestone and the farm before the ceremony and every hour after, with the last ride back to the hotels at ${SHUTTLE.lastRidesHome.at(-1)}. ${DRIVING_NOTE}`,
     link: { href: "/#DayOf", label: "See the shuttle schedule →" },
   },
   {

@@ -11,6 +11,15 @@ describe('ShuttleSection', () => {
     expect(screen.getByText(/seats 40 guests/)).toBeInTheDocument();
   });
 
+  it('tells drivers to park on the south side of the road, not in the driveway', () => {
+    render(<ShuttleSection />);
+
+    const note = screen.getByText(/If you must drive/).textContent;
+    expect(note).toMatch(/park along the south side of the road/);
+    expect(note).toMatch(/pull into the driveway for drop-offs/);
+    expect(note).toMatch(/please don't leave your car there/);
+  });
+
   it('spells out only the two pre-ceremony trips, then the hourly service and last rides', () => {
     render(<ShuttleSection />);
 

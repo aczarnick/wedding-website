@@ -23,3 +23,7 @@ export const SHUTTLE: ShuttleDetails = {
   hourlyFrom: "5:00\u00A0PM",
   lastRidesHome: ["11:00\u00A0PM", "11:30\u00A0PM"],
 };
+
+// Shared by the Shuttle card and the "Can I drive?" FAQ so the two never disagree.
+export const DRIVING_NOTE =
+  "If you must drive, you'll need to park along the south side of the road. You may pull into the driveway for drop-offs, but to leave the bus room to navigate, please don't leave your car there.";
