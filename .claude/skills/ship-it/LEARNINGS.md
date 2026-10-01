@@ -19,6 +19,66 @@ another run's uncommitted edits.
 
 ## Run log
 
+### 2026-09-30 — PR #124 (Day Of schedule + parking note)
+
+First run in a **Claude Code cloud container** instead of the Mac. None of
+`references/environment.md` applies there, and each difference cost a retry:
+
+- Only Node 22 is installed, and `npm ci` hard-fails on `engines` (`node >=24`).
+  Download the Linux tarball from `nodejs.org/dist` into the scratchpad and put its
+  `bin/` first on `PATH` for every npm command.
+- `run-wedding-website/driver.mjs` hard-codes macOS Chrome. Launch
+  `playwright-core` with `executablePath: '/opt/pw-browsers/chromium-<ver>/chrome-linux/chrome'`.
+- No `sips` and no PIL, but ImageMagick 6 (`convert`) is installed and covers every
+  `sips` step — commands in `references/pr-screenshots.md`. This run instead took
+  shots as JPEG straight from Playwright (`type: 'jpeg', quality: 80`), which also
+  works: a gradient-background section went from ~480 KB PNG to 70–180 KB.
+- `docker` exists but the daemon isn't running: start `dockerd` in the background.
+  The Phase 7 build then still fails at `apk add`, because the egress proxy's CA
+  isn't trusted inside the Alpine stage. Record it as not run and lean on CI's
+  docker job, unless the diff touches the Dockerfile or dependencies.
+- `pkill -f 'next start'` kills the Bash tool's own shell (exit 144), because the
+  pattern matches its command line. Kill the `next-server` PID found via `ps`.
+- `.gitignore` did **not** cover `.claude/worktrees/`, although Phase 2 says it
+  does, so every run left the main tree with untracked worktree directories.
+  Fixed in the same PR as this entry.
+- A request with no GitHub issue behind it went through fine: skip `Closes #n`, say
+  so in the PR body, and treat the user's message as the spec.
+
+### 2026-08-26 — issue #109 (remove the Gallery page)
+
+Scope pivoted mid-run: the session opened as "build the gallery" and became
+"delete it" after the brainstorm. Re-classifying from architectural to bounded
+on a *replaced* request (not a shrinking one) was correct — the ratchet forbids
+downgrading within a task, not starting a new one.
+
+- **A dev server started inside a worktree announces the *main* repo as its
+  workspace root, and the warning reads like it is serving the wrong tree.**
+  Turbopack walks up from cwd to the outermost lockfile: `We detected multiple
+  lockfiles and selected /…/wedding-website/package-lock.json as the root
+  directory`, then lists the worktree's own lockfile as "additional". It is
+  still serving cwd. Don't infer it either way — assert it against something the
+  branch actually changed (`curl -o /dev/null -w '%{http_code}' …/gallery` → 404
+  on the branch, 200 on master) *before* trusting a single screenshot. Working-
+  directory drift has now bitten across #71 and #109; promoted to `SKILL.md`
+  Phase 6.
+- **`sips -c H W --cropOffset 0 0` center-crops — it does not anchor to the
+  top.** Cropping a 1280×900 screenshot to a "nav bar strip" yielded a slice of
+  the middle of the hero photo containing no nav at all: a plausible-looking,
+  entirely uninformative image that would have shipped if it had not been
+  opened. Downscale (`-Z`) instead of cropping. The existing "actually open the
+  screenshots" rule is the only thing that caught it. → `references/pr-screenshots.md`.
+- **Prove a "the types prevent this" claim by re-introducing the violation.**
+  The PR asserts that `EXPECTED_HREFS: Record<(typeof NAV_LINKS)[number], string>`
+  makes a stale nav entry a build failure. Re-adding the deleted key and
+  capturing the actual `TS2353` turned that from an assertion into evidence for
+  about thirty seconds of work. Cheap enough to be the default whenever a PR body
+  claims a compile-time guarantee.
+- **zsh aborts the entire `rm` when *any* glob matches nothing.**
+  `rm -f dir/*.png dir/*.jpg` with no `.jpg` present fails `no matches found` and
+  removes **neither** pattern — stale files survive into the commit. List explicit
+  paths, or one pattern per command.
+
 ### 2026-08-26 — PR #107 (consolidate 5 Dependabot PRs)
 
 First run consolidating multiple open Dependabot PRs into one, rather than

@@ -51,8 +51,27 @@ sips -s format jpeg -s formatOptions 80 <file>         # photo-heavy shots
 ```
 
 That took 1.2 MB to 187 KB, in line with the 17–400 KB range already on `master`.
+
+A cloud container has no `sips`; use ImageMagick, which writes a new file rather
+than editing in place:
+
+```bash
+convert <file> -resize '900x900>' <out>.png                  # downscale (never enlarges)
+convert <file> -resize '900x900>' -quality 80 <out>.jpg      # photo-heavy shots
+convert <file> -gravity North -crop 1280x120+0+0 +repage <out>.png   # top strip, e.g. nav bar
+```
+
+The JPEG line took a 1280×1353, 399 KB RSVP shot to 37 KB.
+
 UI-chrome shots (drawers, nav bars, flat color) stay PNG. `check:images` only
 gates `public/images`, so nothing enforces this for you.
+
+**With `sips`, downscale (`-Z`); don't crop.** `sips -c H W --cropOffset 0 0`
+center-crops — it does not anchor to the top. Cropping a full-page shot down to
+"just the nav bar" returns a strip from the middle of the page with no nav in it,
+which looks like a real screenshot and says nothing. A 1000px-wide downscale keeps
+a nav bar legible. ImageMagick's `-gravity North` crop above does anchor to the
+top.
 
 ## Not available
 
